@@ -1,0 +1,23 @@
+/* 🌐 1. Importamos primero los archivos de las fuentes desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&display=swap');
+
+/* 🔥 2. Nueva sintaxis de Tailwind v4 */
+@import 'tailwindcss';
+
+/* 🎨 3. Aquí configuramos tus colores morados y asociamos las fuentes en v4 */
+@theme {
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+
+  --color-brand-light: #f3e8ff;
+  --color-brand: #6b21a8;
+  --color-brand-dark: #581c87;
+}
+
+/* 🛠️ 4. Estilos globales base */
+body {
+  background-color: #fcfcfc;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
