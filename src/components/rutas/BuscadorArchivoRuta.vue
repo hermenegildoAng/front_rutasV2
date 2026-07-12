@@ -125,27 +125,3 @@ const onDropArchivo = (e) => {
   archivoValido.value = validarExtension(file.name)
 }
 </script>
-<style>
-
-.askk {
-
-  margin: auto;
-
-}
-
-.etiqueta{
-
-  background-color: brown;
-  border-style: solid;
-}
-
-
-.op .opp  {
-
-  margin: 10%;
-  width: 100;
-}
-
-
-
-</style>
