@@ -13,7 +13,7 @@
       @drop.prevent="onDropArchivo"
       @click="$refs.inputArchivo.click()"
       :class="[
-        'border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-2 min-h-[110px]',
+        'border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center gap-2 min-h-27.5q',
         esArrastrando ? 'border-brand bg-purple-50/50 scale-[0.99]' : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50/50'
       ]"
     >
@@ -36,6 +36,10 @@
           <p class="text-[10px] text-gray-400 mt-0.5">Formatos: GTFS (.zip), GeoJSON, GPX, KML</p>
         </div>
       </template>
+      
+      <template v-else-if="archivv">
+         
+      </template>
 
       <template v-else-if="archivoCargando">
         <div class="w-6 h-6 border-2 border-purple-200 border-t-brand rounded-full animate-spin"/>
@@ -48,7 +52,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>
         </div>
-        <div class="max-w-[180px] truncate">
+        <div class="max-w-45 truncate">
           <p class="text-xs font-bold text-gray-800 truncate">{{ archivoSeleccionado.name }}</p>
           <p class="text-[10px]" :class="archivoValido ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'">
             {{ archivoValido ? 'Paquete listo para procesar' : 'Formato no soportado' }}
@@ -56,6 +60,8 @@
         </div>
       </template>
     </div>
+
+    
 
     <div v-if="archivoSeleccionado && archivoValido && !archivoCargando" class="flex gap-2">
       <button
@@ -81,6 +87,7 @@
     >
       <span>{{ archivoResultado.mensaje }}</span>
     </div>
+
   </div>
 </template>
 
@@ -123,5 +130,7 @@ const onDropArchivo = (e) => {
   if (!file) return
   archivoSeleccionado.value = file
   archivoValido.value = validarExtension(file.name)
+
+  
 }
 </script>

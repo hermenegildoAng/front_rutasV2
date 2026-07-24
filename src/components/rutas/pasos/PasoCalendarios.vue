@@ -117,7 +117,7 @@
             </div>
             
             <p v-if="bloque.desde && bloque.hasta && bloque.intervalo" class="text-[10px] text-gray-400 font-medium bg-gray-50 p-2 rounded-lg border border-gray-100">
-              📌 <span class="font-bold text-gray-600">Resumen:</span> Servicio continuo desde las {{ formatHora(bloque.desde) }} hasta las {{ formatHora(bloque.hasta) }}, despachando unidades cada {{ bloque.intervalo }} minutos.
+               <span class="font-bold text-gray-600">Resumen:</span> Servicio continuo desde las {{ formatHora(bloque.desde) }} hasta las {{ formatHora(bloque.hasta) }}, despachando unidades cada {{ bloque.intervalo }} minutos.
             </p>
           </div>
         </div>
@@ -148,7 +148,10 @@ const diasSemana = [
   { key: 'domingo', short: 'D' },
 ]
 
+
+
 const letraBloque = (i) => String.fromCharCode(65 + i)
+
 
 const formatHora = (t) => {
   if (!t) return ''
@@ -169,4 +172,5 @@ const agregarCalendario = () => {
 const eliminarCalendario = (i) => { form.value.calendarios.splice(i, 1) }
 const agregarBloqueFrecuencia = (ci) => { form.value.calendarios[ci].bloques.push({ desde: '', hasta: '', intervalo: null }) }
 const eliminarBloqueFrecuencia = (ci, bi) => { form.value.calendarios[ci].bloques.splice(bi, 1) }
+
 </script>
