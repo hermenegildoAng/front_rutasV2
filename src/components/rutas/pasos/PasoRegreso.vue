@@ -1,90 +1,67 @@
 <template>
-  <div class="space-y-4">
-    <div class="sticky top-0 z-10 bg-white/95 py-2 border-b border-gray-100">
-      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Variante de Retorno (Direction 1)</h3>
+  <div class="max-w-2xl mx-auto space-y-6">
+    <!-- Encabezado del Paso -->
+    <div class="border-b border-gray-100 pb-4">
+      <h3 class="text-base font-bold text-gray-900">Configuración del Viaje de Regreso</h3>
+      <p class="text-xs text-gray-500 mt-0.5">
+        Define si la ruta es circular / bidireccional para completar el ciclo de tránsito.
+      </p>
     </div>
 
-    <div class="flex items-center justify-between gap-3 p-4 rounded-2xl border border-gray-200 bg-gray-50/50 shadow-sm">
-      <div class="flex flex-col">
-        <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Habilitar sentido de regreso</span>
-        <span class="text-[11px] text-gray-400 font-medium">Define si la ruta cuenta con un circuito o trazo de retorno inverso</span>
-      </div>
-      <button
-        type="button"
-        @click="form.viaje_regreso.tiene_viaje_regreso = !form.viaje_regreso.tiene_viaje_regreso"
-        :class="form.viaje_regreso.tiene_viaje_regreso ? 'bg-brand' : 'bg-gray-300'"
-        class="relative w-11 h-6 rounded-full transition-colors shrink-0 outline-none cursor-pointer"
-      >
-        <span 
-          :class="form.viaje_regreso.tiene_viaje_regreso ? 'translate-x-5' : 'translate-x-0.5'" 
-          class="absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform"
+    <!-- Pregunta Principal (Switch / Radio) -->
+    <div class="bg-gray-50/80 p-5 rounded-2xl border border-gray-100 space-y-4">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          v-model="tieneRegreso"
+          class="mt-1 h-4 w-4 rounded border-gray-300 text-purple-700 focus:ring-purple-600 cursor-pointer"
         />
-      </button>
+        <div>
+          <span class="text-sm font-bold text-gray-900 block">
+            Habilitar viaje de regreso para esta ruta
+          </span>
+          <span class="text-xs text-gray-500 block mt-0.5">
+            Marca esta casilla si los colectivos realizan el trayecto de vuelta al punto de origen.
+          </span>
+        </div>
+      </label>
     </div>
 
-    <template v-if="form.viaje_regreso.tiene_viaje_regreso">
-      <div class="space-y-3 pt-1">
-        
-        <div class="flex items-center justify-between gap-3 p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div class="flex flex-col">
-            <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Vincular mismos horarios de ida</span>
-            <span class="text-[11px] text-gray-400 font-medium">Clona automáticamente la vigencia y bloques de frecuencia asignados</span>
-          </div>
-          <button 
-            type="button" 
-            @click="toggleMismosHorarios" 
-            :class="form.viaje_regreso.mismos_horarios ? 'bg-brand' : 'bg-gray-300'" 
-            class="relative w-11 h-6 rounded-full transition-colors shrink-0 outline-none cursor-pointer"
-          >
-            <span 
-              :class="form.viaje_regreso.mismos_horarios ? 'translate-x-5' : 'translate-x-0.5'" 
-              class="absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform"
-            />
-          </button>
+    <!-- Nota Informativa si se activa el regreso -->
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div v-if="tieneRegreso" class="p-4 bg-purple-50/60 rounded-2xl border border-purple-100 flex items-start gap-3">
+        <span class="text-lg">ℹ️</span>
+        <div class="space-y-1 text-xs text-purple-900">
+          <p class="font-bold">Asignación automática de datos GTFS</p>
+          <p class="text-purple-700/90 leading-relaxed">
+            Para agilizar la captura, el motor de la SMyT invertirá automáticamente la geometría de las coordenadas y asociará los mismos horarios y paradas registrados en el viaje de ida.
+          </p>
         </div>
-
-        <div class="flex items-center justify-between gap-3 p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div class="flex flex-col">
-            <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Vincular mismas paradas de ida</span>
-            <span class="text-[11px] text-gray-400 font-medium">Utiliza los mismos nodos geométricos de la ida en sentido inverso</span>
-          </div>
-          <button 
-            type="button" 
-            @click="toggleMismasParadas" 
-            :class="form.viaje_regreso.mismas_paradas ? 'bg-brand' : 'bg-gray-300'" 
-            class="relative w-11 h-6 rounded-full transition-colors shrink-0 outline-none cursor-pointer"
-          >
-            <span 
-              :class="form.viaje_regreso.mismas_paradas ? 'translate-x-5' : 'translate-x-0.5'" 
-              class="absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform"
-            />
-          </button>
-        </div>
-
-        <div class="p-3.5 bg-purple-50/50 border border-purple-100 rounded-2xl text-[11px] text-gray-500 font-medium leading-relaxed">
-          💡 <span class="font-bold text-brand uppercase tracking-wider">Nota técnica:</span> Si desvinculas las paradas u horarios, el módulo habilitará las pestañas cartográficas independientes en el mapa principal para trazar la geometría específica de retorno.
-        </div>
-
       </div>
-    </template>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-// Enlace reactivo bidireccional limpio con el objeto central del Dashboard
-const form = defineModel({ type: Object, required: true })
+import { computed } from 'vue'
 
-const toggleMismosHorarios = () => {
-  form.value.viaje_regreso.mismos_horarios = !form.value.viaje_regreso.mismos_horarios
-  form.value.viaje_regreso.calendarios = form.value.viaje_regreso.mismos_horarios 
-    ? [] 
-    : JSON.parse(JSON.stringify(form.value.calendarios))
-}
+// Usamos defineModel para una vinculación reactiva y limpia con el wizard principal
+const modelValue = defineModel({
+  type: Object,
+  default: () => ({ tieneRegreso: false })
+})
 
-const toggleMismasParadas = () => {
-  form.value.viaje_regreso.mismas_paradas = !form.value.viaje_regreso.mismas_paradas
-  form.value.viaje_regreso.paradas = form.value.viaje_regreso.mismas_paradas 
-    ? [] 
-    : JSON.parse(JSON.stringify(form.value.paradas))
-}
+const tieneRegreso = computed({
+  get: () => modelValue.value.tieneRegreso,
+  set: (val) => {
+    modelValue.value = { ...modelValue.value, tieneRegreso: val }
+  }
+})
 </script>

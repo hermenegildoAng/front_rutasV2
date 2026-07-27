@@ -12,7 +12,7 @@
           :class="modoActivo === 'trazar' ? 'bg-brand text-white shadow-sm' : 'bg-purple-50 text-brand border border-purple-100'"
           class="text-[10px] px-2.5 py-1.5 rounded-xl font-bold uppercase tracking-wider transition-all hover:opacity-90 select-none cursor-pointer"
         >
-          ✏️ Mapa
+          Mapa
         </button>
         <button
           @click="agregarPuntoManual"
