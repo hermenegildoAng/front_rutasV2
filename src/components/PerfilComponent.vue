@@ -14,7 +14,7 @@
         <div class="flex flex-col items-center text-center space-y-2 pb-4 border-b border-gray-100">
           <div :class="[
             'w-16 h-16 text-white rounded-full flex items-center justify-center text-2xl font-bold uppercase shadow-md',
-            rol === 'super' ? 'bg-purple-600 shadow-purple-900/10' : 'bg-blue-600 shadow-blue-900/10'
+            rol === 'super' ? 'bg-brand shadow-purple-900/10' : 'bg-blue-600 shadow-blue-900/10'
           ]">
             {{ usuario[0] }}
           </div>
@@ -22,7 +22,7 @@
             <h2 class="font-bold text-gray-800">{{ props.rol === 'super' ? 'Ing. Alejandro H.' : 'Sria. Beatriz M.' }}</h2>
             <p :class="[
               'text-xs font-bold tracking-wider uppercase mt-0.5',
-              rol === 'super' ? 'text-purple-600' : 'text-blue-600'
+              rol === 'super' ? 'text-brand' : 'text-blue-600'
             ]">{{ rol === 'super' ? 'Administrador' : 'Capturista' }}</p>
           </div>
         </div>

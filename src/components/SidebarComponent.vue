@@ -62,7 +62,7 @@
           class="w-full flex items-center space-x-3 px-3 py-2.5 text-sm rounded-xl transition-colors font-medium"
         >
           <BuildingIcon class="w-5 h-5" />
-          <span>Registrar Agencia</span>
+          <span>Agencias</span>
         </button>
 
         <div v-if="rol === 'super'" class="pt-4 space-y-1">
@@ -83,18 +83,7 @@
             <span>Control de Usuarios</span>
           </button>
 
-          <button
-            @click="$emit('cambiarVista', 'bitacora')"
-            :class="[
-              modelValue === 'bitacora'
-                ? 'bg-brand/10 text-brand font-semibold'
-                : 'text-gray-600 hover:bg-gray-50',
-            ]"
-            class="w-full flex items-center space-x-3 px-3 py-2.5 text-sm rounded-xl transition-colors font-medium"
-          >
-            <ClipboardListIcon class="w-5 h-5" />
-            <span>Bitácora de Acciones</span>
-          </button>
+    
         </div>
       </nav>
     </div>
