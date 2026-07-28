@@ -30,7 +30,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-          Duración del Itinerario (min)
+          Duración del viaje (min)
         </label>
         <input
           v-model.number="form.duracion_ruta"
@@ -42,36 +42,10 @@
         />
       </div>
 
-      <div>
-        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-          Tarifa Base Público
-        </label>
-        <div class="relative">
-          <span class="absolute left-4 top-3 text-gray-400 text-sm font-bold">$</span>
-          <input
-            v-model.number="form.tarifa_base"
-            type="number"
-            step="0.50"
-            min="0"
-            placeholder="12.00"
-            class="w-full pl-8 pr-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand text-gray-900 font-mono"
-            required
-          />
-        </div>
-      </div>
+    
     </div>
 
-    <div>
-      <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-        Divisa / Moneda Regulada
-      </label>
-      <select 
-        v-model="form.moneda" 
-        class="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand text-gray-900 font-medium"
-      >
-        <option value="MXN">MXN - Peso Mexicano</option>
-      </select>
-    </div>
+    
   </div>
 </template>
 
