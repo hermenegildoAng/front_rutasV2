@@ -41,7 +41,7 @@
         <div class="space-y-1 text-xs text-purple-900">
           <p class="font-bold">Asignación automática de datos GTFS</p>
           <p class="text-purple-700/90 leading-relaxed">
-            Para agilizar la captura, el motor de la SMyT invertirá automáticamente la geometría de las coordenadas y asociará los mismos horarios y paradas registrados en el viaje de ida.
+            Se creará automáticamente el viaje de retorno (direction_id = 1) invirtiendo la secuencia de las paradas (origen ↔ destino) y manteniendo la misma frecuencia de horarios.
           </p>
         </div>
       </div>
@@ -52,16 +52,19 @@
 <script setup>
 import { computed } from 'vue'
 
-// Usamos defineModel para una vinculación reactiva y limpia con el wizard principal
+
 const modelValue = defineModel({
   type: Object,
   default: () => ({ tieneRegreso: false })
 })
 
 const tieneRegreso = computed({
-  get: () => modelValue.value.tieneRegreso,
+  get: () => modelValue.value?.tieneRegreso ?? false,
   set: (val) => {
-    modelValue.value = { ...modelValue.value, tieneRegreso: val }
+    modelValue.value = { 
+      ...(modelValue.value || {}), 
+      tieneRegreso: val 
+    }
   }
 })
 </script>

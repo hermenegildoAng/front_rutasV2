@@ -42,7 +42,7 @@
             </div>
 
             <div v-if="vistaActual === 'captura'" class="h-full">
-              <CapturaRutaComponent :rutaPrecargada="rutaSeleccionadaParaEditar" />
+              <CapturaRutaComponent :rutaPrecargada="rutaSeleccionadaParaEditar" @rutaGuardada="irAVista" />
             </div>
 
             <div v-if="vistaActual === 'usuarios'">

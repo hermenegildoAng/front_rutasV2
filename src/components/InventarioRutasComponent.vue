@@ -13,8 +13,9 @@
       <div class="w-full sm:w-64">
         <input
           type="text"
+          v-model="busqueda"
           placeholder="Buscar por nombre o código..."
-          class="w-full px-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white text-gray-900"
+          class="border border-gray-200 rounded-lg px-4 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-all"
         />
       </div>
     </div>
@@ -34,7 +35,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-sm">
-            <tr v-for="ruta in rutas" :key="ruta.id" class="hover:bg-gray-50/50 transition-colors">
+            <tr v-for="ruta in rutasFiltradas" :key="ruta.id" class="hover:bg-gray-50/50 transition-colors">
               <td class="py-4 px-6">
                 <div class="font-bold text-brand">{{ ruta.codigo }}</div>
                 <div class="font-medium text-gray-900 text-xs">{{ ruta.nombre }}</div>
@@ -75,7 +76,7 @@
 
       <div class="block md:hidden grid grid-cols-1 gap-4">
         <div
-          v-for="ruta in rutas"
+          v-for="ruta in rutasFiltradas"
           :key="'ruta-card-' + ruta.id"
           class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3"
         >
@@ -131,38 +132,51 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
+import { useToast } from 'vue-toastification'
 
+const toast = useToast()
 const mostrarToast = ref(false)
 const archivoDescargado = ref('')
 
-// Cambié las propiedades viejas por el booleano 'completo' para controlar los badges
-const rutas = ref([
-  {
-    id: 1,
-    codigo: 'R-01 TRONCAL',
-    nombre: 'Centro Histórico - Central de Autobuses',
-    completo: true,
-  },
-  {
-    id: 2,
-    codigo: 'R-12 LINEA B',
-    nombre: 'Circuito Periférico Norte - Hospitales',
-    completo: false,
-  },
-  {
-    id: 3,
-    codigo: 'R-25 MARGARITAS',
-    nombre: 'Colonia Las Flores - Vía Alterna Express',
-    completo: true,
-  },
-  {
-    id: 4,
-    codigo: 'R-INT-04',
-    nombre: 'Zona Metropolitana - Parque Industrial',
-    completo: false,
-  },
-])
+// Estado para almacenar las rutas reales del backend
+const rutas = ref([])
+const busqueda = ref('')
+
+// Función para obtener las rutas desde Django
+const cargarRutas = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/maps/rutas/')
+    
+    // Mapeamos los datos de Django a la estructura que usa tu tabla visual
+    rutas.value = response.data.map((item) => ({
+      id: item.id || item.route_id,
+      codigo: item.route_id || 'S/C',
+      nombre: item.route_long_name || item.route_short_name || 'Sin nombre',
+      completo: true // Como vienen del sistema GTFS completo, por defecto los marcamos completos o según tu lógica
+    }))
+  } catch (error) {
+    console.error('Error al cargar las rutas:', error)
+    toast.error('No se pudieron cargar las rutas del sistema.')
+  }
+}
+
+// Filtro en tiempo real para el input de búsqueda
+const rutasFiltradas = computed(() => {
+  if (!busqueda.value) return rutas.value
+  const termino = busqueda.value.toLowerCase()
+  return rutas.value.filter(
+    (r) => 
+      r.codigo.toLowerCase().includes(termino) || 
+      r.nombre.toLowerCase().includes(termino)
+  )
+})
+
+// Ejecutar la petición al montar el componente
+onMounted(() => {
+  cargarRutas()
+})
 </script>
 
 <style scoped>

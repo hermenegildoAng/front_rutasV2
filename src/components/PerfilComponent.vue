@@ -48,10 +48,10 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Actualizar Contraseña</h3>
         
         <div v-if="mensajeExito" class="mb-4 p-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg font-medium">
-          🎉 {{ mensajeExito }}
+          {{ mensajeExito }}
         </div>
         <div v-if="mensajeError" class="mb-4 p-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg font-medium">
-          ⚠️ {{ mensajeError }}
+           {{ mensajeError }}
         </div>
 
         <form @submit.prevent="cambiarPassword" class="space-y-4">

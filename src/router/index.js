@@ -7,15 +7,21 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { requiereInvitado: true } // Solo accesibles si NO estás logueado
+      meta: { requiereInvitado: true } 
     },
     {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
-      meta: { requiereAutenticacion: true } // Solo accesibles si SÍ estás logueado
+      meta: { requiereAutenticacion: true } 
     },
-    // Redirección por defecto si meten una URL que no existe
+    {
+      path: '/rutas-inventario',
+      name: 'ListaRutas',
+      component: () => import('../components/InventarioRutasComponent.vue'),
+      meta: { requiereAutenticacion: true }
+    },
+    
     {
       path: '/:pathMatch(.*)*',
       redirect: '/'
@@ -23,22 +29,19 @@ const router = createRouter({
   ],
 })
 
-// 🔐 Guardián de Seguridad Global (Navigation Guard)
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const rolUsuario = localStorage.getItem('user-rol')
 
-  // Caso 1: La ruta requiere autenticación y el usuario no está logueado
+  
   if (to.meta.requiereAutenticacion && !rolUsuario) {
-    return next({ name: 'login' })
+    return { name: 'login' }
   }
 
-  // Caso 2: El usuario ya está logueado e intenta ir al Login
+  
   if (to.meta.requiereInvitado && rolUsuario) {
-    return next({ name: 'dashboard' })
+    return { name: 'dashboard' }
   }
 
-  // Si todo está en orden, prosigue la navegación normal
-  next()
 })
 
 export default router

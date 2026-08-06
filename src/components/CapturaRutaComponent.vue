@@ -52,14 +52,33 @@
       </div>
 
       <div class="p-5 overflow-y-auto flex-1 space-y-5">
-        <PasoGeneral v-if="pasoActual === 0" v-model="form" />
-        <PasoCalendarios v-if="pasoActual === 1" v-model="form" />
-        <PasoParadas v-if="pasoActual === 2" v-model="form" :modo-activo="modoActivo" @toggle-modo="activarModo" @actualizar-mapa="redibujarTodosLosMarcadoresParadas" />
-        <PasoRegreso v-if="pasoActual === 3" v-model="form" />
+        <PasoGeneral v-if="pasoActual === 0" v-model="form" :errores="errores" />
+        <PasoCalendarios v-if="pasoActual === 1" v-model="form" :errores="errores" />
+        <PasoParadas
+          v-if="pasoActual === 2" v-model="form" :errores="errores"
+          :modo-activo="modoActivo"
+          @toggle-modo="toggleModo"
+          @actualizar-mapa="redibujarTodosLosMarcadoresParadas"
+        />
+      <PasoRegreso v-if="pasoActual === 3" v-model="form" />
       </div>
 
       <div class="p-5 border-t border-gray-100 bg-white/50 shrink-0">
-        <button @click="handleGuardarRuta" class="w-full py-3 rounded-2xl bg-brand text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]">
+        <!-- Botón de Siguiente (Visible en pasos 1, 2 y 3) -->
+        <button 
+          v-if="pasoActual < pasos.length - 1"
+          @click="siguientePaso" 
+          class="w-full py-3 rounded-2xl bg-gray-800 text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]"
+        >
+          Siguiente Paso ({{ pasoActual + 1 }}/{{ pasos.length }})
+        </button>
+        
+        <!-- Botón de Guardar (Visible SOLO en el último paso) -->
+        <button 
+          v-else
+          @click="handleGuardarRuta" 
+          class="w-full py-3 rounded-2xl bg-brand text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]"
+        >
           Guardar Configuración de Ruta
         </button>
       </div>
@@ -104,10 +123,11 @@
           <PanelPuntosRuta
             v-model="puntosRuta"
             :modo-activo="modoActivo"
-            @toggle-modo="activarModo"
+            @toggle-modo="toggleModo"
             @borrar-trazo="borrarTrazo"
             class="overflow-y-auto flex-1 max-h-[50vh] md:max-h-[60vh] rounded-2xl"
           />
+          
         </div>
     </div>
 
@@ -115,7 +135,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import axios from 'axios'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BuscadorArchivoRuta from './rutas/BuscadorArchivoRuta.vue'
@@ -124,7 +145,14 @@ import PasoGeneral from './rutas/pasos/PasoGeneral.vue'
 import PasoCalendarios from './rutas/pasos/PasoCalendarios.vue'
 import PasoParadas from './rutas/pasos/PasoParadas.vue'
 import PasoRegreso from './rutas/pasos/PasoRegreso.vue'
+import { useRouter } from 'vue-router'; 
+import { useToast } from 'vue-toastification';
+import { useRutaValidation } from '../composables/useRutaValidation'
 
+const emit = defineEmits(['rutaGuardada']);
+const { errores, validarPaso0, validarPasoHorarios, validarPasoParadas, limpiarErrores } = useRutaValidation()
+const router = useRouter();
+const toast = useToast();
 // ========================= CONFIGURACIÓN DE ICONOS =========================
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -133,7 +161,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Icono personalizado para paradas usando la estética del SMyT (Alineado a tu color corporativo)
+
 const iconoParada = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6b21a8" width="32" height="32">
     <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.013 3.5-4.512 3.5-7.327a8 8 0 10-16 0c0 2.815 1.556 5.314 3.5 7.327a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
@@ -164,13 +192,12 @@ const puntosRuta = ref([])
 
 // Formulario reactivo completo integrado con las tarifas bases
 const form = ref({
-  folio: '',
-  nombre_corto: '',
-  nombre_largo: '',
-  agencia: '',
-  tipo_ruta: '',
+  route_id: '',
+  route_short_name: '',
+  route_long_name: '',
+  agency_id: '',
+  route_type: '',
   duracion_ruta: null,
-  tarifa_base: null,
   moneda: 'MXN',
   calendarios: [],
   paradas: [],
@@ -184,15 +211,67 @@ const form = ref({
 })
 
 // ========================= WATCHERS =========================
-watch(puntosRuta, () => { redibujarRuta() }, { deep: true })
+watch(
+  puntosRuta,
+  () => {
+    redibujarRuta()
+  },
+  { deep: true }
+)
+
+watch(
+  () => form.value.paradas,
+  () => {
+    redibujarTodosLosMarcadoresParadas()
+  },
+  { deep: true }
+)
+// ========================= toogle Modo =========================
+
+const toggleModo = (modo) => {
+  if (modoActivo.value === modo) {
+    modoActivo.value = null 
+  } else {
+    modoActivo.value = modo 
+  }
+
+  
+  if (map) {
+    const container = map.getContainer()
+    if (modoActivo.value) {
+      container.style.cursor = 'crosshair' 
+    } else {
+      container.style.cursor = 'grab'
+    }
+  }
+}
 
 // ========================= FLUJO DEL ASISTENTE =========================
-const siguientePaso = () => { if (pasoActual.value < pasos.length - 1) pasoActual.value++ }
-const anteriorPaso  = () => { if (pasoActual.value > 0) pasoActual.value-- }
+const siguientePaso = () => {
+  if (pasoActual.value === 0) {
+    if (!validarPaso0(form.value)) return
+  }
 
-const activarModo = (modo) => {
-  modoActivo.value = modoActivo.value === modo ? null : modo
-  if (map) map.getContainer().style.cursor = modoActivo.value ? 'crosshair' : 'grab'
+  if (pasoActual.value === 1) {
+    if (!validarPasoHorarios(form.value)) return
+  }
+
+  if (pasoActual.value === 2) {
+    // AQUÍ ESTÁ EL TRUCO: Le pasamos el form Y los puntos del trazado del mapa
+    if (!validarPasoParadas(form.value, puntosRuta.value)) return 
+  }
+
+  if (pasoActual.value < pasos.length - 1) {
+    limpiarErrores()
+    pasoActual.value++
+  }
+}
+
+const anteriorPaso = () => {
+  if (pasoActual.value > 0) {
+    limpiarErrores()
+    pasoActual.value--
+  }
 }
 
 // ========================= MÓDULO CARTOGRÁFICO DE LEAFLET =========================
@@ -288,23 +367,120 @@ const manejarPuntosDesdeArchivo = (puntos) => {
 
 // ========================= PROCESAMIENTO GENERAL FINAL =========================
 const handleGuardarRuta = () => {
-  const { viaje_regreso, ...restoForm } = form.value
+  
+  
+  // Validar Paso 1: Información General
+  if (!validarPaso0(form.value)) {
+    pasoActual.value = 0 
+    alert('Por favor corrige los campos obligatorios del Paso 1 antes de guardar.')
+    return
+  }
+
+  // Validar Paso 2: Calendarios y Horarios
+  if (!validarPasoHorarios(form.value)) {
+    pasoActual.value = 1 
+    alert('Por favor completa la configuración de horarios en el Paso 2.')
+    return
+  }
+
+  // Validar Paso 3: Trazado y Paradas
+  if (!validarPasoParadas(form.value, puntosRuta.value)) {
+    pasoActual.value = 2 
+    alert('Asegúrate de trazar la ruta y colocar al menos 2 paradas en el Paso 3.')
+    return
+  }
+
+  
+  // Detectar si se habilitó el viaje de regreso
+  const tieneRegresoActivo = Boolean(form.value.tieneRegreso || form.value.viaje_regreso?.tiene_viaje_regreso)
+
+  
+  const paradasIdaFormatted = (form.value.paradas || []).map((p, idx) => ({
+    folio_parada: String(p.folio_parada).trim(),
+    nombre_parada: String(p.nombre_parada).trim(),
+    latitud: parseFloat(p.latitud),
+    longitud: parseFloat(p.longitud),
+    orden_parada: idx + 1
+  }))
+
+  // Generar Paradas de Regreso si aplica (Invertir secuencia)
+  const paradasRegresoFormatted = tieneRegresoActivo
+    ? [...paradasIdaFormatted].reverse().map((p, idx) => ({
+        ...p,
+        orden_parada: idx + 1
+      }))
+    : []
+
+  // Formatear Geometría del Trazado (LineString GeoJSON + Coordenadas numéricas)
+  const coordsValidas = puntosRuta.value
+    .filter((p) => p.lat && p.lng && !isNaN(parseFloat(p.lat)) && !isNaN(parseFloat(p.lng)))
+    .map((p) => [parseFloat(p.lng), parseFloat(p.lat)]) 
+
+  
+  const { tieneRegreso, viaje_regreso, ...restoForm } = form.value
 
   const payload = {
     ...restoForm,
-    geometria_linea: puntosRuta.value.filter((p) => p.lat && p.lng),
-    viaje_regreso: viaje_regreso.tiene_viaje_regreso
-      ? {
-          tiene_viaje_regreso: true,
-          mismos_horarios: viaje_regreso.mismos_horarios,
-          calendarios: viaje_regreso.mismos_horarios ? form.value.calendarios : viaje_regreso.calendarios,
-          mismas_paradas: viaje_regreso.mismas_paradas,
-          paradas: viaje_regreso.mismas_paradas ? form.value.paradas : viaje_regreso.paradas,
-        }
-      : { tiene_viaje_regreso: false },
+    
+    route_type: parseInt(restoForm.route_type, 10),
+    duracion_ruta: parseInt(restoForm.duracion_ruta, 10),
+    
+    
+    paradas: paradasIdaFormatted,
+
+    
+    geometria_linea: {
+      type: 'LineString',
+      coordinates: coordsValidas
+    },
+
+    viaje_regreso: {
+      tiene_viaje_regreso: tieneRegresoActivo,
+      mismos_horarios: true,
+      mismas_paradas: true,
+      paradas: paradasRegresoFormatted
+    }
   }
 
-  console.log('Payload Estructura GTFS Completo:', payload)
-  alert('¡Configuración de ruta e historial geométrico compilados correctamente!')
+  console.log('Payload Estructura GTFS Limpio y Listo:', JSON.stringify(payload, null, 2))
+  
+  const guardarRutaGTFS = async (payloadJSON) => {
+    try {
+        
+        const response = await axios.post('http://localhost:8000/api/maps/rutas-gtfs/', payloadJSON, {
+            headers: {
+                'Content-Type': 'application/json',
+                // 'Authorization': `Bearer ${token}` // Descomenta si usas JWT
+            }
+        });
+        
+       
+        toast.success(response.data?.data?.mensaje || '¡Ruta guardada exitosamente en el sistema GTFS!');
+        
+        console.log('¡Éxito! Ruta registrada en la base de datos:', response.data);
+        
+    
+        emit('rutaGuardada', 'rutas');
+        
+    } catch (error) {
+        
+        if (error.response) {
+            
+            console.error('Error de validación en Django:', error.response.data);
+            alert('Django rechazó los datos. Revisa la consola para ver qué campo falló.');
+            
+        } else if (error.request) {
+          
+            console.error('El servidor no responde:', error.request);
+            alert('Error de red. No se pudo contactar al servidor de Django.');
+            
+        } else {
+           
+            console.error('Error al armar la petición:', error.message);
+        }
+    }
+  }
+  
+  guardarRutaGTFS(payload);
 }
 </script>
