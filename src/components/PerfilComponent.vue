@@ -14,16 +14,16 @@
         <div class="flex flex-col items-center text-center space-y-2 pb-4 border-b border-gray-100">
           <div :class="[
             'w-16 h-16 text-white rounded-full flex items-center justify-center text-2xl font-bold uppercase shadow-md',
-            rol === 'super' ? 'bg-brand shadow-purple-900/10' : 'bg-blue-600 shadow-blue-900/10'
+            rol === 'admin' ? 'bg-brand shadow-purple-900/10' : 'bg-blue-600 shadow-blue-900/10'
           ]">
-            {{ usuario[0] }}
+            {{ inicialUsuario }}
           </div>
           <div>
-            <h2 class="font-bold text-gray-800">{{ props.rol === 'super' ? 'Ing. Alejandro H.' : 'Sria. Beatriz M.' }}</h2>
+            <h2 class="font-bold text-gray-800">{{ nombreUsuario }}</h2>
             <p :class="[
               'text-xs font-bold tracking-wider uppercase mt-0.5',
-              rol === 'super' ? 'text-brand' : 'text-blue-600'
-            ]">{{ rol === 'super' ? 'Administrador' : 'Capturista' }}</p>
+              rol === 'admin' ? 'text-brand' : 'text-blue-600'
+            ]">{{ rol === 'admin' ? 'Administrador' : 'Capturista' }}</p>
           </div>
         </div>
 
@@ -31,7 +31,7 @@
           <div>
             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nombre de Usuario</label>
             <p class="text-xs font-medium text-gray-700 bg-gray-50 border border-gray-100 px-3 py-2 rounded-lg mt-1 select-all font-mono">
-              {{ usuario }}
+              {{ nombreCuenta }}
             </p>
           </div>
           <div>
@@ -107,18 +107,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import axios from 'axios'
+import { setSession } from '../services/auth'
 
 const props = defineProps({
-  rol: {
-    type: String,
-    default: 'super'
+  usuario: {
+    type: Object,
+    required: true,
   }
 })
+const emit = defineEmits(['usuarioActualizado'])
 
-// Estado inicial simulado basado en el rol actual
-const usuario = ref(props.rol === 'super' ? 'hermenegildoAng' : 'beatrizM_smyt') 
-const correo = ref(props.rol === 'super' ? 'hernandezhermenegildoangeldavi@gmail.com' : 'b.martinez@smyt.tlaxcala.gob.mx')
+const datosUsuario = ref({ ...props.usuario })
+const rol = computed(() => datosUsuario.value.tipo_usuario)
+const nombreUsuario = computed(() => datosUsuario.value.nombre_completo || datosUsuario.value.username || 'Usuario')
+const nombreCuenta = computed(() => datosUsuario.value.username || '')
+const correo = computed(() => datosUsuario.value.email || '')
+const inicialUsuario = computed(() => nombreUsuario.value.charAt(0).toUpperCase())
 
 const passwordActual = ref('')
 const passwordNueva = ref('')
@@ -127,6 +133,16 @@ const passwordConfirmar = ref('')
 const cargando = ref(false)
 const mensajeExito = ref('')
 const mensajeError = ref('')
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('http://127.0.0.1:8000/api/auth/perfil/')
+    datosUsuario.value = response.data
+    emit('usuarioActualizado', response.data)
+  } catch {
+    mensajeError.value = 'No se pudo actualizar la información del perfil.'
+  }
+})
 
 const cambiarPassword = async () => {
   mensajeExito.value = ''
@@ -150,15 +166,23 @@ const cambiarPassword = async () => {
   cargando.value = true
 
   try {
-    // Simulación de petición a Django
-    await new Promise(resolve => setTimeout(resolve, 1500)) 
+    const response = await axios.post('http://127.0.0.1:8000/api/auth/cambiar-password/', {
+      password_actual: passwordActual.value,
+      password_nueva: passwordNueva.value,
+      password_confirmar: passwordConfirmar.value,
+    })
+    setSession(response.data.token, datosUsuario.value)
     
     mensajeExito.value = '¡Contraseña actualizada correctamente!'
     passwordActual.value = ''
     passwordNueva.value = ''
     passwordConfirmar.value = ''
   } catch (error) {
-    mensajeError.value = 'Hubo un error al cambiar la contraseña. Verifica tu contraseña actual.'
+    const data = error.response?.data
+    const primerError = data && typeof data === 'object' ? Object.values(data)[0] : null
+    mensajeError.value = Array.isArray(primerError)
+      ? primerError[0]
+      : primerError || 'No se pudo cambiar la contraseña.'
   } finally {
     cargando.value = false
   }

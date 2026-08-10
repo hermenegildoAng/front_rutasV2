@@ -38,7 +38,7 @@
         </button>
 
         <button
-          v-if="rol === 'capturista'"
+          v-if="rol === 'capturador'"
           @click="$emit('cambiarVista', 'captura')"
           :class="[
             modelValue === 'captura'
@@ -52,7 +52,7 @@
         </button>
 
         <button
-          v-if="rol === 'super' || rol === 'capturista'"
+          v-if="rol === 'admin' || rol === 'capturador'"
           @click="$emit('cambiarVista', 'agencias')"
           :class="[
             modelValue === 'agencias'
@@ -65,7 +65,7 @@
           <span>Agencias</span>
         </button>
 
-        <div v-if="rol === 'super'" class="pt-4 space-y-1">
+        <div v-if="rol === 'admin'" class="pt-4 space-y-1">
           <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-2">
             Administración
           </p>
@@ -115,6 +115,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { clearSession } from '../services/auth'
 import {
   Map as MapIcon,
   PlusCircle as PlusCircleIcon,
@@ -128,23 +131,29 @@ import {
 const props = defineProps({
   modelValue: String,
   rol: String,
+  usuario: Object,
 })
 
 const emit = defineEmits(['cambiarVista', 'logout'])
+const router = useRouter()
 
 const nombreUsuario = computed(() => {
-  if (props.rol === 'super') return 'Ing. Alejandro H.'
-  if (props.rol === 'capturista') return 'Sria. Beatriz M.'
-  return 'Usuario Sistema'
+  return props.usuario?.nombre_completo || props.usuario?.username || 'Usuario del sistema'
 })
 
 const claseRol = computed(() => {
-  if (props.rol === 'super') return 'bg-purple-50 text-purple-600 border border-purple-100'
+  if (props.rol === 'admin') return 'bg-purple-50 text-purple-600 border border-purple-100'
   return 'bg-blue-50 text-blue-600 border border-blue-100'
 })
 
-const cerrarSesion = () => {
-  localStorage.removeItem('user-rol')
+const cerrarSesion = async () => {
+  try {
+    await axios.post('http://127.0.0.1:8000/api/auth/logout/')
+  } catch {
+    // La sesión local debe cerrarse incluso si el servidor no está disponible.
+  }
+  clearSession()
   emit('logout')
+  router.replace({ name: 'login' })
 }
 </script>

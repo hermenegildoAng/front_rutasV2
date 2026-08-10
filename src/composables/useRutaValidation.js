@@ -7,6 +7,18 @@ export function useRutaValidation() {
     paradas: []
   })
   const UMBRAL_MAXIMO_DESVIACION_METROS = 20
+  const UMBRALES_VELOCIDAD_GTFS_KMH = {
+    0: 100,
+    1: 150,
+    2: 500,
+    3: 150,
+    4: 80,
+    5: 30,
+    6: 50,
+    7: 50,
+    11: 150,
+    12: 150,
+  }
   const limpiarErrores = () => {
     errores.value = {}
   }
@@ -235,29 +247,83 @@ export function useRutaValidation() {
     return esValido
   }
 
+  // Validación final bajo los umbrales del validador canónico GTFS.
+  // Se invoca únicamente cuando el usuario pulsa Guardar o Actualizar.
+  const validarVelocidadFinal = (form, puntosTrazado) => {
+    const coordenadas = (puntosTrazado || [])
+      .filter((p) => p.lat !== '' && p.lng !== '' && !isNaN(Number(p.lat)) && !isNaN(Number(p.lng)))
+      .map((p) => [Number(p.lng), Number(p.lat)])
+    const duracionMinutos = Number(form.duracion_ruta)
+    const routeType = Number(form.route_type)
+    const limiteKmh = UMBRALES_VELOCIDAD_GTFS_KMH[routeType] || 200
+
+    if (coordenadas.length < 2 || !duracionMinutos || duracionMinutos <= 0) {
+      return {
+        esValida: false,
+        mensaje: 'No fue posible calcular la velocidad: revisa el shape y la duración de la ruta.',
+      }
+    }
+
+    const distanciaShapeKm = turf.length(turf.lineString(coordenadas), { units: 'kilometers' })
+    const velocidadPromedioKmh = distanciaShapeKm / (duracionMinutos / 60)
+    const duracionMinimaShape = distanciaShapeKm / limiteKmh * 60
+
+    let tramoMasRapido = null
+    let duracionMinimaTramos = 0
+    const paradas = [...(form.paradas || [])].sort(
+      (a, b) => Number(a.orden_parada) - Number(b.orden_parada)
+    )
+
+    if (paradas.length > 1) {
+      const minutosPorTramo = duracionMinutos / (paradas.length - 1)
+      for (let index = 0; index < paradas.length - 1; index += 1) {
+        const origen = paradas[index]
+        const destino = paradas[index + 1]
+        const distanciaKm = turf.distance(
+          turf.point([Number(origen.longitud), Number(origen.latitud)]),
+          turf.point([Number(destino.longitud), Number(destino.latitud)]),
+          { units: 'kilometers' }
+        )
+        const velocidadKmh = distanciaKm / (minutosPorTramo / 60)
+        const duracionTotalRequerida = distanciaKm / limiteKmh * 60 * (paradas.length - 1)
+        duracionMinimaTramos = Math.max(duracionMinimaTramos, duracionTotalRequerida)
+
+        if (!tramoMasRapido || velocidadKmh > tramoMasRapido.velocidadKmh) {
+          tramoMasRapido = {
+            origen: origen.nombre_parada,
+            destino: destino.nombre_parada,
+            distanciaKm,
+            velocidadKmh,
+          }
+        }
+      }
+    }
+
+    const excedePromedio = velocidadPromedioKmh > limiteKmh
+    const excedeTramo = tramoMasRapido?.velocidadKmh > limiteKmh
+
+    return {
+      esValida: !excedePromedio && !excedeTramo,
+      distanciaShapeKm,
+      duracionMinutos,
+      velocidadPromedioKmh,
+      limiteKmh,
+      excedePromedio,
+      excedeTramo,
+      tramoMasRapido,
+      duracionMinimaRecomendada: Math.ceil(
+        Math.max(duracionMinimaShape, duracionMinimaTramos)
+      ),
+    }
+  }
+
   // RETORNO ÚNICO CORREGIDO
   return {
     errores,
     validarPaso0,
     validarPasoHorarios,
     validarPasoParadas,
+    validarVelocidadFinal,
     limpiarErrores
-  }
-
-
-  return {
-    errores,
-    validarPaso0,
-    validarPasoHorarios,
-    validarPasoParadas,
-    limpiarErrores
-  }
-
-  return {
-    errores,
-    validarPaso0,
-    validarPasoHorarios,
-    limpiarErrores,
-    validarPasoParadas,
   }
 }

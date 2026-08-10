@@ -26,6 +26,7 @@
 
         <!-- Botón Descargar GTFS -->
         <button 
+          v-if="rol === 'admin'"
           @click="descargarGTFS" 
           :disabled="descargandoGTFS"
           class="w-full sm:w-auto flex items-center justify-center gap-2 bg-brand hover:bg-brand/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"  
@@ -71,14 +72,31 @@
           
         </div>
 
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="shape in ruta.trazados"
+            :key="shape.shape_id || shape.direccion"
+            class="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700"
+          >
+            Shape {{ shape.direccion_label?.toLowerCase() || 'sin dirección' }}: {{ formatearDistancia(shape.distancia_km) }}
+          </span>
+          <span
+            v-if="ruta.trazados.length === 0"
+            class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-500"
+          >
+            Shape sin distancia disponible
+          </span>
+        </div>
+
         <div class="flex items-center justify-end pt-3 border-t border-gray-50 gap-2">
           <button
             @click="$emit('editarRuta', ruta)"
             class="px-3 py-1.5 bg-brand/10 hover:bg-brand/20 text-brand text-xs font-bold rounded-lg transition-all"
           >
-            Editar
+            {{ rol === 'admin' ? 'Ver detalles' : 'Editar' }}
           </button>
           <button
+            v-if="rol === 'capturador'"
             @click="prepararEliminacion(ruta)"
             class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-all"
           >
@@ -128,6 +146,12 @@ import axios from 'axios'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
+defineProps({
+  rol: {
+    type: String,
+    required: true,
+  },
+})
 
 // Estado principal
 const rutas = ref([])
@@ -147,12 +171,19 @@ const cargarRutas = async () => {
       codigo: item.route_id || 'S/C',
       nombre: item.route_long_name || item.route_short_name || 'Sin nombre',
       agency_id: item.agency_id || 'Agencia desconocida',
+      trazados: item.trazados_resumen || [],
         
     }))
   } catch (error) {
     console.error('Error al cargar las rutas:', error)
     toast.error('No se pudieron cargar las rutas del sistema.')
   }
+}
+
+const formatearDistancia = (distanciaKm) => {
+  const valor = Number(distanciaKm)
+  if (!Number.isFinite(valor)) return 'Sin datos'
+  return valor < 1 ? `${Math.round(valor * 1000)} m` : `${valor.toFixed(2)} km`
 }
 
 // Lógica del Modal

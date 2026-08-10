@@ -82,6 +82,12 @@
       </form>
     </div>
 
+    <div v-if="passwordTemporal" class="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-5 py-4 text-sm">
+      Contraseña temporal del usuario recién creado:
+      <strong class="font-mono select-all ml-1">{{ passwordTemporal }}</strong>.
+      Compártela de forma segura; no volverá a mostrarse.
+    </div>
+
     <!-- LISTADO DE USUARIOS -->
     <div class="space-y-4">
       <div class="flex items-center justify-between px-2">
@@ -120,9 +126,15 @@
                 {{ user.email }}
               </td>
               <td class="py-4 px-6">
-                <span :class="badgeRol(user.tipo_usuario)" class="px-2 py-0.5 text-[10px] font-extrabold rounded-full uppercase tracking-wide">
-                  {{ user.tipo_usuario === 'admin' ? 'Administrador' : 'Capturista' }}
-                </span>
+                <select
+                  :value="user.tipo_usuario"
+                  :disabled="user.id === usuarioActualId"
+                  @change="cambiarRol(user, $event)"
+                  class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white"
+                >
+                  <option value="capturador">Capturista</option>
+                  <option value="admin">Administrador</option>
+                </select>
               </td>
               <td class="py-4 px-6">
                 <span v-if="user.activo" class="inline-flex items-center text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
@@ -135,6 +147,7 @@
               <td class="py-4 px-6 text-right">
                 <button
                   @click="toggleEstado(user)"
+                  :disabled="user.id === usuarioActualId"
                   :class="user.activo ? 'text-red-600 hover:bg-red-50 border border-red-200' : 'text-purple-700 hover:bg-purple-50 border border-purple-200'"
                   class="px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
                 >
@@ -157,6 +170,7 @@
             </div>
             <button
               @click="toggleEstado(user)"
+              :disabled="user.id === usuarioActualId"
               :class="user.activo ? 'text-red-600 bg-red-50' : 'text-purple-700 bg-purple-50'"
               class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-95"
             >
@@ -165,9 +179,15 @@
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-50">
-            <span :class="badgeRol(user.tipo_usuario)" class="px-2 py-0.5 text-[10px] font-extrabold rounded-full uppercase tracking-wide">
-              {{ user.tipo_usuario === 'admin' ? 'Admin' : 'Capturista' }}
-            </span>
+            <select
+              :value="user.tipo_usuario"
+              :disabled="user.id === usuarioActualId"
+              @change="cambiarRol(user, $event)"
+              class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white"
+            >
+              <option value="capturador">Capturista</option>
+              <option value="admin">Administrador</option>
+            </select>
 
             <span v-if="user.activo" class="inline-flex items-center text-xs font-semibold text-green-700">
               <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span> Activo
@@ -185,17 +205,28 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useUsuarios } from '@/composables/useUsuarios'
+import { getUser } from '@/services/auth'
+
+const usuarioActualId = getUser()?.id
 
 const {
   listaUsuarios,
   cargando,
   guardando,
+  passwordTemporal,
   nuevoUsuario,
   errores,
   obtenerUsuarios,
   agregarUsuario,
   toggleEstado,
+  actualizarRol,
 } = useUsuarios()
+
+const cambiarRol = (usuario, event) => {
+  const anterior = usuario.tipo_usuario
+  usuario.tipo_usuario = event.target.value
+  actualizarRol(usuario, anterior)
+}
 
 const badgeRol = (rol) => {
   if (rol === 'admin') return 'bg-brand text-brand border border-brand'

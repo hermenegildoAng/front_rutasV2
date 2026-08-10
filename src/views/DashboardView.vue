@@ -19,6 +19,7 @@
     <SidebarComponent
       :modelValue="vistaActual"
       :rol="rol"
+      :usuario="usuario"
       @cambiarVista="irAVista"
       class="fixed md:relative inset-y-0 left-0 z-40 transform md:transform-none transition-transform duration-300 ease-in-out"
       :class="[menuAbierto ? 'translate-x-0' : '-translate-x-full md:translate-x-0']"
@@ -38,11 +39,15 @@
           <div :key="vistaActual" class="h-full">
             
             <div v-if="vistaActual === 'rutas'">
-              <InventarioRutasComponent @editarRuta="cargarDetalleDeRuta" />
+              <InventarioRutasComponent :rol="rol" @editarRuta="cargarDetalleDeRuta" />
             </div>
 
             <div v-if="vistaActual === 'captura'" class="h-full">
-              <CapturaRutaComponent :rutaPrecargada="rutaSeleccionadaParaEditar" @rutaGuardada="irAVista" />
+              <CapturaRutaComponent
+                :rutaPrecargada="rutaSeleccionadaParaEditar"
+                :soloLectura="rol === 'admin'"
+                @rutaGuardada="irAVista"
+              />
             </div>
 
             <div v-if="vistaActual === 'usuarios'">
@@ -58,7 +63,7 @@
             </div>
 
             <div v-if="vistaActual === 'perfil'">
-              <PerfilComponent />
+              <PerfilComponent :usuario="usuario" @usuarioActualizado="actualizarUsuario" />
             </div>
 
           </div>
@@ -78,15 +83,17 @@ import AgenciasComponent from '../components/AdminAgenciasComponent.vue'
 import BitacoraComponent from '../components/BitacoraComponent.vue'
 import PerfilComponent from '../components/PerfilComponent.vue'
 import { ChevronRight as ChevronRightIcon } from 'lucide-vue-next'
+import { getUser, updateStoredUser } from '../services/auth'
 
-// Fallback seguro al rol estructural del capturista
-const rol = ref(localStorage.getItem('user-rol') || 'capturista')
+const usuario = ref(getUser())
+const rol = ref(usuario.value?.tipo_usuario || '')
 const vistaActual = ref('rutas')
 const menuAbierto = ref(false)
 const rutaSeleccionadaParaEditar = ref(null)
 
 const irAVista = (nuevaVista) => {
-  
+  if (nuevaVista === 'captura' && rol.value !== 'capturador') return
+  if (nuevaVista === 'usuarios' && rol.value !== 'admin') return
   if (nuevaVista === 'captura' && vistaActual.value !== 'captura') {
     rutaSeleccionadaParaEditar.value = null
   }
@@ -99,10 +106,20 @@ const cargarDetalleDeRuta = (ruta) => {
   vistaActual.value = 'captura'
 }
 
+const tituloCaptura = () => rol.value === 'admin'
+  ? 'Detalle de Ruta GTFS'
+  : 'Estructurar Trazado de Ruta GTFS'
+
+const actualizarUsuario = (datos) => {
+  usuario.value = datos
+  rol.value = datos.tipo_usuario
+  updateStoredUser(datos)
+}
+
 // Diccionario ortográfico limpio para el encabezado de control institucional
 const titulosVistas = {
   rutas: 'Inventario de Rutas SMyT',
-  captura: 'Estructurar Trazado de Ruta GTFS',
+  captura: tituloCaptura(),
   usuarios: 'Control de Personal y Accesos',
   agencias: 'Catálogo de Operadoras y Agencias',
   bitacora: 'Bitácora de Auditoría de Sistemas',

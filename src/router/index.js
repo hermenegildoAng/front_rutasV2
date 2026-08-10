@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isAuthenticated } from '../services/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,7 +19,7 @@ const router = createRouter({
     {
       path: '/rutas-inventario',
       name: 'ListaRutas',
-      component: () => import('../components/InventarioRutasComponent.vue'),
+      redirect: '/dashboard',
       meta: { requiereAutenticacion: true }
     },
     
@@ -30,18 +31,14 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const rolUsuario = localStorage.getItem('user-rol')
-
-  
-  if (to.meta.requiereAutenticacion && !rolUsuario) {
+  const tieneSesion = isAuthenticated()
+  if (to.meta.requiereAutenticacion && !tieneSesion) {
     return { name: 'login' }
   }
 
-  
-  if (to.meta.requiereInvitado && rolUsuario) {
+  if (to.meta.requiereInvitado && tieneSesion) {
     return { name: 'dashboard' }
   }
-
 })
 
 export default router

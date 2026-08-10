@@ -13,7 +13,7 @@
     </div>
 
     <div
-      v-if="modoActivo"
+      v-if="modoActivo && !soloLectura"
       class="absolute bottom-6 right-6 z-40 bg-brand text-white text-xs px-4 py-2 rounded-xl shadow-lg font-bold uppercase tracking-wider flex items-center gap-2"
     >
       {{ modoActivo === 'trazar' ? 'Modo Trazo: Click para agregar puntos' : 'Modo Parada: Click para colocar parada' }}
@@ -37,7 +37,7 @@
     >
       <div class="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
         <div>
-          <h2 class="font-bold text-lg text-gray-800">Estructurar Ruta GTFS</h2>
+          <h2 class="font-bold text-lg text-gray-800">{{ soloLectura ? 'Detalle de Ruta GTFS' : 'Estructurar Ruta GTFS' }}</h2>
           <p class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Paso {{ pasoActual + 1 }} de {{ pasos.length }}</p>
         </div>
         <div class="flex gap-2 items-center">
@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <div class="p-5 overflow-y-auto flex-1 space-y-5">
+      <fieldset :disabled="soloLectura" class="p-5 overflow-y-auto flex-1 space-y-5">
         <PasoGeneral v-if="pasoActual === 0" v-model="form" :errores="errores" />
         <PasoCalendarios v-if="pasoActual === 1" v-model="form" :errores="errores" />
         <PasoParadas
@@ -61,12 +61,15 @@
           @actualizar-mapa="redibujarTodosLosMarcadoresParadas"
         />
       <PasoRegreso  v-if="pasoActual === 3"  v-model="form.viaje_regreso.tiene_viaje_regreso"/>
-      </div>
+      </fieldset>
 
       <div class="p-5 border-t border-gray-100 bg-white/50 shrink-0">
+        <p v-if="soloLectura" class="text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+          Vista de solo lectura
+        </p>
         <!-- Botón de Siguiente (Visible en pasos 1, 2 y 3) -->
         <button 
-          v-if="pasoActual < pasos.length - 1"
+          v-else-if="pasoActual < pasos.length - 1"
           @click="siguientePaso" 
           class="w-full py-3 rounded-2xl bg-gray-800 text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]"
         >
@@ -75,7 +78,7 @@
         
         <!-- Botón de Guardar (Visible SOLO en el último paso) -->
         <button 
-          v-else
+          v-else-if="!soloLectura"
           @click="handleGuardarRuta" 
           class="w-full py-3 rounded-2xl bg-brand text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]"
         >
@@ -87,7 +90,7 @@
     <div class="absolute top-4 right-14 mr-8 z-20 w-72 flex flex-col gap-2">
       <!-- 🛠️ BOTÓN FLOTANTE PARA MOSTRAR HERRAMIENTAS (Cuando el panel está oculto) -->
         <button
-          v-if="!panelDerechoVisible"
+          v-if="!soloLectura && !panelDerechoVisible"
           @click="panelDerechoVisible = true"
           type="button"
           class="absolute top-4 right-4 z-30 w-10 h-10 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center text-purple-700 hover:bg-purple-700 hover:text-white transition-all active:scale-95 cursor-pointer"
@@ -100,7 +103,7 @@
 
         <!-- 📋 PANEL FLOTANTE DE HERRAMIENTAS (Cuando está visible) -->
         <div
-          v-if="panelDerechoVisible"
+          v-if="!soloLectura && panelDerechoVisible"
           class="absolute top-4 inset-x-4 md:left-auto md:right-4 z-20 w-auto md:w-80 lg:w-96 flex flex-col gap-2 max-h-[calc(100vh-120px)] transition-all duration-300"
         >
           <!-- Barra superior con botón ocultar -->
@@ -150,7 +153,14 @@ import { useToast } from 'vue-toastification';
 import { useRutaValidation } from '../composables/useRutaValidation'
 
 const emit = defineEmits(['rutaGuardada']);
-const { errores, validarPaso0, validarPasoHorarios, validarPasoParadas, limpiarErrores } = useRutaValidation()
+const {
+  errores,
+  validarPaso0,
+  validarPasoHorarios,
+  validarPasoParadas,
+  validarVelocidadFinal,
+  limpiarErrores,
+} = useRutaValidation()
 const router = useRouter();
 const toast = useToast();
 // ========================= CONFIGURACIÓN DE ICONOS =========================
@@ -177,6 +187,10 @@ const props = defineProps({
   rutaPrecargada: {
     type: Object,
     default: null
+  },
+  soloLectura: {
+    type: Boolean,
+    default: false,
   }
 })
 
@@ -319,6 +333,11 @@ const toggleModo = (modo) => {
 
 // ========================= FLUJO DEL ASISTENTE =========================
 const siguientePaso = () => {
+  if (props.soloLectura) {
+    if (pasoActual.value < pasos.length - 1) pasoActual.value++
+    return
+  }
+
   if (pasoActual.value === 0) {
     if (!validarPaso0(form.value)) return
   }
@@ -355,6 +374,7 @@ onMounted(() => {
   }).addTo(map)
 
   map.on('click', (e) => {
+    if (props.soloLectura) return
     const { lat, lng } = e.latlng
     if (modoActivo.value === 'trazar') {
       puntosRuta.value.push({ lat: lat.toFixed(6), lng: lng.toFixed(6) })
@@ -464,6 +484,22 @@ const handleGuardarRuta = () => {
   if (!validarPasoParadas(form.value, puntosRuta.value)) {
     pasoActual.value = 2 
     alert('Asegúrate de trazar la ruta y colocar al menos 2 paradas en el Paso 3.')
+    return
+  }
+
+  const validacionVelocidad = validarVelocidadFinal(form.value, puntosRuta.value)
+  if (!validacionVelocidad.esValida) {
+    const detalleTramo = validacionVelocidad.excedeTramo
+      ? `\nTramo más rápido: ${validacionVelocidad.tramoMasRapido.origen} → ${validacionVelocidad.tramoMasRapido.destino} (${validacionVelocidad.tramoMasRapido.velocidadKmh.toFixed(1)} km/h).`
+      : ''
+    const detalleCalculo = validacionVelocidad.distanciaShapeKm != null
+      ? `\nDistancia del shape: ${validacionVelocidad.distanciaShapeKm.toFixed(2)} km.\nDuración capturada: ${validacionVelocidad.duracionMinutos} min.\nVelocidad promedio: ${validacionVelocidad.velocidadPromedioKmh.toFixed(1)} km/h.\nUmbral GTFS: ${validacionVelocidad.limiteKmh} km/h.${detalleTramo}\n\nAumenta la duración al menos a ${validacionVelocidad.duracionMinimaRecomendada} minutos o corrige el shape y las paradas.`
+      : `\n${validacionVelocidad.mensaje}`
+
+    window.alert(
+      `No se puede guardar la ruta porque la velocidad calculada es demasiado alta para la validación GTFS.${detalleCalculo}`
+    )
+    pasoActual.value = 0
     return
   }
 

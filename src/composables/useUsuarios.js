@@ -10,6 +10,7 @@ export function useUsuarios() {
   const listaUsuarios = ref([])
   const cargando = ref(true)
   const guardando = ref(false)
+  const passwordTemporal = ref('')
 
   const nuevoUsuario = ref({
     nombre_completo: '',
@@ -54,15 +55,14 @@ export function useUsuarios() {
     }
 
     const anioActual = new Date().getFullYear().toString().slice(-2) // ej: '26'
-    let usernameFinal = `${baseUsername}${anioActual}`
-
-    // Si ya existe localmente, agregamos el día actual del mes
-    const yaExiste = listaUsuarios.value.some(
+    const baseConAnio = `${baseUsername}${anioActual}`
+    let usernameFinal = baseConAnio
+    let consecutivo = 2
+    while (listaUsuarios.value.some(
       (u) => u.username && u.username.toLowerCase() === usernameFinal.toLowerCase()
-    )
-    if (yaExiste) {
-      const diaActual = new Date().getDate().toString().padStart(2, '0')
-      usernameFinal = `${usernameFinal}${diaActual}`
+    )) {
+      usernameFinal = `${baseConAnio}${consecutivo}`
+      consecutivo += 1
     }
 
     return usernameFinal
@@ -75,8 +75,8 @@ export function useUsuarios() {
     }
   )
 
-  // Generador de clave aleatoria de 8 caracteres
-  const generarPasswordAleatorio = (longitud = 8) => {
+  // Generador de clave temporal robusta
+  const generarPasswordAleatorio = (longitud = 12) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#'
     let res = ''
     for (let i = 0; i < longitud; i++) {
@@ -134,12 +134,14 @@ export function useUsuarios() {
     if (!validarFormulario()) return
 
     guardando.value = true
-    nuevoUsuario.value.password = generarPasswordAleatorio(8)
+    nuevoUsuario.value.password = generarPasswordAleatorio(12)
+    passwordTemporal.value = ''
 
     try {
       const res = await axios.post(API_URL, nuevoUsuario.value)
       listaUsuarios.value.unshift(res.data)
       toast.success('¡Usuario registrado exitosamente!')
+      passwordTemporal.value = nuevoUsuario.value.password
 
       nuevoUsuario.value = {
         nombre_completo: '',
@@ -178,14 +180,30 @@ export function useUsuarios() {
     }
   }
 
+  const actualizarRol = async (usuario, tipoUsuarioAnterior) => {
+    try {
+      const res = await axios.patch(`${API_URL}${usuario.id}/`, {
+        tipo_usuario: usuario.tipo_usuario,
+      })
+      Object.assign(usuario, res.data)
+      toast.success('Rol actualizado correctamente.')
+    } catch (error) {
+      usuario.tipo_usuario = tipoUsuarioAnterior
+      const detalle = error.response?.data?.non_field_errors?.[0] || error.response?.data?.detail
+      toast.error(detalle || 'No se pudo actualizar el rol.')
+    }
+  }
+
   return {
     listaUsuarios,
     cargando,
     guardando,
+    passwordTemporal,
     nuevoUsuario,
     errores,
     obtenerUsuarios,
     agregarUsuario,
     toggleEstado,
+    actualizarRol,
   }
 }

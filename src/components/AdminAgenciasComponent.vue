@@ -2,7 +2,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- 📋 FORMULARIO DE REGISTRO -->
     <div
-      v-if="rol !== 'super'"
+      v-if="rol === 'capturador'"
       class="lg:col-span-1 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5 h-fit"
     >
       <div>
@@ -90,7 +90,7 @@
     <div
       :class="[
         'bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 w-full',
-        rol && rol.toLowerCase() === 'super' ? 'lg:col-span-3' : 'lg:col-span-2',
+        rol === 'admin' ? 'lg:col-span-3' : 'lg:col-span-2',
       ]"
     >
       <div class="flex items-center justify-between">
@@ -134,6 +134,7 @@
 
                 <!-- BOTÓN DE EDITAR EN CARD -->
                 <button
+                  v-if="rol === 'capturador'"
                   @click="abrirModalEdicion(agencia)"
                   title="Editar agencia"
                   class="p-1 rounded-lg hover:bg-gray-200/70 text-gray-400 hover:text-brand transition-colors cursor-pointer"
@@ -145,6 +146,7 @@
 
                 <!-- BOTÓN DE ELIMINAR EN CARD (NUEVO) -->
                 <button
+                  v-if="rol === 'capturador'"
                   @click="abrirModalEliminar(agencia)"
                   title="Eliminar agencia"
                   class="p-1 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
