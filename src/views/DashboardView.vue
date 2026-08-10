@@ -38,7 +38,7 @@
           <div :key="vistaActual" class="h-full">
             
             <div v-if="vistaActual === 'rutas'">
-              <InventarioRutasComponent @verDetalleRuta="cargarDetalleDeRuta" />
+              <InventarioRutasComponent @editarRuta="cargarDetalleDeRuta" />
             </div>
 
             <div v-if="vistaActual === 'captura'" class="h-full">
@@ -86,6 +86,10 @@ const menuAbierto = ref(false)
 const rutaSeleccionadaParaEditar = ref(null)
 
 const irAVista = (nuevaVista) => {
+  
+  if (nuevaVista === 'captura' && vistaActual.value !== 'captura') {
+    rutaSeleccionadaParaEditar.value = null
+  }
   vistaActual.value = nuevaVista
   menuAbierto.value = false
 }

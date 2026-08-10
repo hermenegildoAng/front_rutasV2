@@ -5,16 +5,21 @@
       <h3 class="text-base font-bold text-gray-900">Configuración del Viaje de Regreso</h3>
       <p class="text-xs text-gray-500 mt-0.5">
         Define si la ruta es circular / bidireccional para completar el ciclo de tránsito.
+        
       </p>
     </div>
 
-    <!-- Pregunta Principal -->
+    <!-- Pregunta Principal (Switch / Radio) -->
     <div class="bg-gray-50/80 p-5 rounded-2xl border border-gray-100 space-y-4">
+      
       <label class="flex items-start gap-3 cursor-pointer">
+        
+      
         <input
           type="checkbox"
-          :checked="modelValue"
-          @change="$emit('update:modelValue', $event.target.checked)"
+          :checked="!!tiene_viaje_regreso"
+          
+          @change="tiene_viaje_regreso = $event.target.checked"
           class="mt-1 h-4 w-4 rounded border-gray-300 text-purple-700 focus:ring-purple-600 cursor-pointer"
         />
         <div>
@@ -37,7 +42,7 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
-      <div v-if="modelValue" class="p-4 bg-purple-50/60 rounded-2xl border border-purple-100 flex items-start gap-3">
+      <div v-if="tiene_viaje_regreso" class="p-4 bg-purple-50/60 rounded-2xl border border-purple-100 flex items-start gap-3">
         <span class="text-lg">ℹ️</span>
         <div class="space-y-1 text-xs text-purple-900">
           <p class="font-bold">Asignación automática de datos GTFS</p>
@@ -51,10 +56,21 @@
 </template>
 
 <script setup>
-// Recibimos el valor booleano directo en lugar de un objeto complejo
-defineProps({
-  modelValue: { type: Boolean, default: false }
+import { computed } from 'vue'
+
+
+const modelValue = defineModel({
+  type: Object,
+  default: () => ({ tiene_viaje_regreso: false })
 })
 
-defineEmits(['update:modelValue'])
+const tiene_viaje_regreso = computed({
+  get: () => modelValue.value?.tiene_viaje_regreso ?? false,
+  set: (val) => {
+    modelValue.value = { 
+      ...(modelValue.value || {}), 
+      tiene_viaje_regreso: val 
+    }
+  }
+})
 </script>

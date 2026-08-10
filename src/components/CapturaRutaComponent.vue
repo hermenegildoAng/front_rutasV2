@@ -60,7 +60,7 @@
           @toggle-modo="toggleModo"
           @actualizar-mapa="redibujarTodosLosMarcadoresParadas"
         />
-      <PasoRegreso v-if="pasoActual === 3" v-model="form" />
+      <PasoRegreso  v-if="pasoActual === 3"  v-model="form.viaje_regreso.tiene_viaje_regreso"/>
       </div>
 
       <div class="p-5 border-t border-gray-100 bg-white/50 shrink-0">
@@ -79,7 +79,7 @@
           @click="handleGuardarRuta" 
           class="w-full py-3 rounded-2xl bg-brand text-white font-bold uppercase tracking-wider text-xs hover:opacity-90 shadow-md transition-all active:scale-[0.99]"
         >
-          Guardar Configuración de Ruta
+          {{ esModoEdicion ? 'Actualizar Cambios' : 'Guardar Ruta' }}
         </button>
       </div>
     </div>
@@ -173,9 +173,18 @@ const iconoParada = L.divIcon({
 })
 
 // ========================= ESTADO REACTIVO =========================
+const props = defineProps({
+  rutaPrecargada: {
+    type: Object,
+    default: null
+  }
+})
+
+
 const mapContainer = ref(null)
 let map = null
 const mapaCargando = ref(true)
+const esModoEdicion = ref(false)
 
 const pasoActual = ref(0)
 const pasos = ['general', 'calendarios', 'paradas', 'viaje_regreso']
@@ -209,6 +218,68 @@ const form = ref({
     paradas: [],
   },
 })
+//========================== FUncion edicion de ruta =========================
+const cargarDatosParaEdicion = async (idRuta) => {
+  try {
+    const response = await axios.get(`http://localhost:8000/api/maps/rutas-gtfs/${idRuta}/detalle/`) 
+    const data = response.data.data 
+    
+    
+    form.value.route_id = data.route_id || ''
+    form.value.route_short_name = data.route_short_name || ''
+    form.value.route_long_name = data.route_long_name || ''
+    form.value.agency_id = data.agency || '' 
+    form.value.route_type = data.route_type || 3
+    
+    
+    if (data.paradas_asociadas) {
+      form.value.paradas = data.paradas_asociadas.map((p, index) => ({
+        folio_parada: p.stop_id,
+        nombre_parada: p.stop_name,
+        latitud: p.latitud, 
+        longitud: p.longitud,
+        orden_parada: index + 1,
+        _colapsado: true 
+      }))
+    }
+
+    
+
+    if (data.trazados && data.trazados.length > 0) {
+      const trazadoPrincipal = data.trazados[0]
+      form.value.duracion_ruta = trazadoPrincipal.duracion_estimada_min || 30
+
+      const coordenadas = trazadoPrincipal.geometria.coordinates 
+      
+      
+      puntosRuta.value = coordenadas.map(c => ({
+        lat: c[1].toFixed(6),
+        lng: c[0].toFixed(6)
+      }))
+    }
+
+   
+    if (data.calendarios) {
+      form.value.calendarios = data.calendarios
+    }
+
+   
+    if (data.viaje_regreso) {
+      form.value.viaje_regreso.tiene_viaje_regreso = Boolean(data.viaje_regreso.tiene_viaje_regreso);
+      form.value.viaje_regreso.mismas_paradas = Boolean(data.viaje_regreso.mismas_paradas);
+    }
+
+
+    if (puntosRuta.value.length > 0) {
+      redibujarRuta()
+    }
+
+    toast.success('¡Datos cargados correctamente!')
+  } catch (error) {
+    console.error('Error:', error)
+    toast.error('Error al cargar los detalles.')
+  }
+}
 
 // ========================= WATCHERS =========================
 watch(
@@ -294,6 +365,12 @@ onMounted(() => {
   })
 
   setTimeout(() => { mapaCargando.value = false }, 800)
+
+  if (props.rutaPrecargada && props.rutaPrecargada.id) {
+    esModoEdicion.value = true
+    cargarDatosParaEdicion(props.rutaPrecargada.id)
+  }
+
 })
 
 onBeforeUnmount(() => { if (map) map.remove() })
@@ -391,7 +468,7 @@ const handleGuardarRuta = () => {
   }
 
   
-  // Detectar si se habilitó el viaje de regreso
+  
   const tieneRegresoActivo = Boolean(form.value.tieneRegreso || form.value.viaje_regreso?.tiene_viaje_regreso)
 
   
@@ -425,7 +502,7 @@ const handleGuardarRuta = () => {
     route_type: parseInt(restoForm.route_type, 10),
     duracion_ruta: parseInt(restoForm.duracion_ruta, 10),
     
-    
+    agency: restoForm.agency_id,
     paradas: paradasIdaFormatted,
 
     
@@ -435,10 +512,10 @@ const handleGuardarRuta = () => {
     },
 
     viaje_regreso: {
-      tiene_viaje_regreso: tieneRegresoActivo,
+      tiene_viaje_regreso: Boolean(tieneRegresoActivo),
       mismos_horarios: true,
       mismas_paradas: true,
-      paradas: paradasRegresoFormatted
+      paradas: tieneRegresoActivo ? paradasRegresoFormatted : []
     }
   }
 
@@ -446,13 +523,33 @@ const handleGuardarRuta = () => {
   
   const guardarRutaGTFS = async (payloadJSON) => {
     try {
+
+      let response 
+
+      if (esModoEdicion.value) {
+        // === MODO EDICIÓN (PUT) ===
+        const idRuta = props.rutaPrecargada.id
+        response = await axios.put(`http://localhost:8000/api/maps/rutas-gtfs/${idRuta}/`, payloadJSON, {
+          headers: {
+              'Content-Type': 'application/json',
+              // 'Authorization': `Bearer ${token}` // Descomenta si usas JWT
+          }
+        });
         
-        const response = await axios.post('http://localhost:8000/api/maps/rutas-gtfs/', payloadJSON, {
+        toast.success('¡Ruta actualizada exitosamente!')
+      } else {
+        // === MODO CREACIÓN (POST) ===
+        response = await axios.post('http://localhost:8000/api/maps/rutas-gtfs/', payloadJSON, {
             headers: {
                 'Content-Type': 'application/json',
                 // 'Authorization': `Bearer ${token}` // Descomenta si usas JWT
             }
         });
+        
+        toast.success('¡Ruta creada exitosamente!')
+      }
+        
+        
         
        
         toast.success(response.data?.data?.mensaje || '¡Ruta guardada exitosamente en el sistema GTFS!');
