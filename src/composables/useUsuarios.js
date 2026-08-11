@@ -77,12 +77,28 @@ export function useUsuarios() {
 
   // Generador de clave temporal robusta
   const generarPasswordAleatorio = (longitud = 12) => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#'
-    let res = ''
-    for (let i = 0; i < longitud; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length))
+    const grupos = [
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      'abcdefghijklmnopqrstuvwxyz',
+      '0123456789',
+      '!@#',
+    ]
+    const todos = grupos.join('')
+    const numeroSeguro = (maximo) => {
+      const valor = new Uint32Array(1)
+      window.crypto.getRandomValues(valor)
+      return valor[0] % maximo
     }
-    return res
+
+    const caracteres = grupos.map((grupo) => grupo[numeroSeguro(grupo.length)])
+    while (caracteres.length < longitud) {
+      caracteres.push(todos[numeroSeguro(todos.length)])
+    }
+    for (let i = caracteres.length - 1; i > 0; i -= 1) {
+      const j = numeroSeguro(i + 1)
+      ;[caracteres[i], caracteres[j]] = [caracteres[j], caracteres[i]]
+    }
+    return caracteres.join('')
   }
 
   // --- VALIDACIONES EN CLIENTE ---
@@ -139,8 +155,17 @@ export function useUsuarios() {
 
     try {
       const res = await axios.post(API_URL, nuevoUsuario.value)
-      listaUsuarios.value.unshift(res.data)
-      toast.success('¡Usuario registrado exitosamente!')
+      const usuarioCreado = { ...res.data }
+      delete usuarioCreado.correo_enviado
+      delete usuarioCreado.modo_correo
+      listaUsuarios.value.unshift(usuarioCreado)
+      if (res.data.modo_correo === 'console') {
+        toast.info('Usuario registrado; el correo de prueba se imprimió en la terminal de Django.')
+      } else if (res.data.correo_enviado) {
+        toast.success('Usuario registrado y credenciales enviadas por correo.')
+      } else {
+        toast.warning('Usuario registrado, pero no se pudo enviar el correo de credenciales.')
+      }
       passwordTemporal.value = nuevoUsuario.value.password
 
       nuevoUsuario.value = {

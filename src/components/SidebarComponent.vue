@@ -1,11 +1,12 @@
 <template>
   <aside class="w-64 bg-white border-r border-gray-200 flex flex-col justify-between h-screen">
     <div class="p-6">
-      <div
-        class="w-full h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center text-brand font-black text-sm px-2 text-center mb-8 uppercase tracking-wider"
-      >
-        <MapIcon class="w-5 h-5 text-brand mr-2" />
-        <span>Movilidad GTFS</span>
+      <div class="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-2 mb-6">
+        <img
+          :src="logo"
+          alt="Logotipo de la Plataforma GTFS"
+          class="w-full h-20 object-contain rounded-xl"
+        />
       </div>
 
       <div class="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
@@ -117,13 +118,13 @@
 import { computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import logo from '../assets/logo.jpeg'
 import { clearSession } from '../services/auth'
 import {
   Map as MapIcon,
   PlusCircle as PlusCircleIcon,
   Building2 as BuildingIcon,
   Users as UsersIcon,
-  ClipboardList as ClipboardListIcon,
   User as UserIcon,
   LogOut as LogOutIcon
 } from '@lucide/vue'

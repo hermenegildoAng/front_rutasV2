@@ -36,7 +36,7 @@ router.beforeEach((to) => {
     return { name: 'login' }
   }
 
-  if (to.meta.requiereInvitado && tieneSesion) {
+  if (to.meta.requiereInvitado && tieneSesion && to.query.recuperar !== '1') {
     return { name: 'dashboard' }
   }
 })

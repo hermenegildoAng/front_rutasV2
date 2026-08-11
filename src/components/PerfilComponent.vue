@@ -60,6 +60,7 @@
             <input 
               v-model="passwordActual" 
               type="password" 
+              autocomplete="current-password"
               class="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition"
               placeholder="••••••••"
               :disabled="cargando"
@@ -72,6 +73,7 @@
               <input 
                 v-model="passwordNueva" 
                 type="password" 
+                autocomplete="new-password"
                 class="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition"
                 placeholder="Mínimo 8 caracteres"
                 :disabled="cargando"
@@ -82,6 +84,7 @@
               <input 
                 v-model="passwordConfirmar" 
                 type="password" 
+                autocomplete="new-password"
                 class="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition"
                 placeholder="Repite la contraseña"
                 :disabled="cargando"
