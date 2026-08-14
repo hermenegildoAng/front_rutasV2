@@ -50,7 +50,7 @@
     <!-- Vista Exclusiva de Cards (Grid Responsivo) -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
-        v-for="ruta in rutasFiltradas"
+        v-for="ruta in rutasPaginadas"
         :key="'ruta-card-' + ruta.id"
         class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4 hover:shadow-md transition-shadow"
       >
@@ -73,6 +73,9 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+            {{ ruta.numeroParadas }} {{ ruta.numeroParadas === 1 ? 'parada' : 'paradas' }}
+          </span>
           <span
             v-for="shape in ruta.trazados"
             :key="shape.shape_id || shape.direccion"
@@ -111,39 +114,35 @@
       </div>
     </div>
 
-    <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN -->
-    <div v-if="mostrarModalEliminar" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="p-6">
-          <h3 class="text-lg font-bold text-gray-900 mb-2">¿Eliminar Ruta?</h3>
-          <p class="text-sm text-gray-500">
-            Estás a punto de eliminar la ruta <strong class="text-gray-900">{{ rutaSeleccionada?.codigo }}</strong>. Esta acción eliminará permanentemente la geometría, paradas y horarios asociados en el sistema. ¿Deseas continuar?
-          </p>
-        </div>
-        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-          <button 
-            @click="cerrarModalEliminar" 
-            class="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button 
-            @click="eliminarRutaDefinitiva" 
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors"
-          >
-            Sí, eliminar ruta
-          </button>
-        </div>
-      </div>
-    </div>
+    <PaginadorComponent
+      v-model="paginaActual"
+      :total="rutasFiltradas.length"
+      :por-pagina="RUTAS_POR_PAGINA"
+    />
+
+    <ConfirmacionEliminarComponent
+      :model-value="mostrarModalEliminar"
+      titulo="¿Eliminar ruta?"
+      texto-confirmar="Sí, eliminar ruta"
+      titulo-id="titulo-eliminar-ruta"
+      :cargando="eliminandoRuta"
+      @cancelar="cerrarModalEliminar"
+      @confirmar="eliminarRutaDefinitiva"
+    >
+      Estás a punto de borrar la ruta
+      <span class="font-bold text-gray-900 font-mono">{{ rutaSeleccionada?.codigo }}</span>.
+      También se eliminarán permanentemente su geometría, paradas y horarios asociados.
+    </ConfirmacionEliminarComponent>
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import ConfirmacionEliminarComponent from './ConfirmacionEliminarComponent.vue'
+import PaginadorComponent from './PaginadorComponent.vue'
 
 const toast = useToast()
 defineProps({
@@ -156,10 +155,13 @@ defineProps({
 // Estado principal
 const rutas = ref([])
 const busqueda = ref('')
+const paginaActual = ref(1)
+const RUTAS_POR_PAGINA = 6
 
 // Estado del Modal de Eliminación
 const mostrarModalEliminar = ref(false)
 const rutaSeleccionada = ref(null)
+const eliminandoRuta = ref(false)
 
 // Funciones CRUD
 const cargarRutas = async () => {
@@ -172,6 +174,7 @@ const cargarRutas = async () => {
       nombre: item.route_long_name || item.route_short_name || 'Sin nombre',
       agency_id: item.agency_id || 'Agencia desconocida',
       trazados: item.trazados_resumen || [],
+      numeroParadas: Number(item.numero_paradas) || 0,
         
     }))
   } catch (error) {
@@ -198,6 +201,8 @@ const cerrarModalEliminar = () => {
 }
 
 const eliminarRutaDefinitiva = async () => {
+  if (!rutaSeleccionada.value || eliminandoRuta.value) return
+  eliminandoRuta.value = true
   try {
     // Asegúrate de que la URL termine en "/" y le pasemos el ID de la ruta seleccionada
     await axios.delete(`http://localhost:8000/api/maps/rutas/${rutaSeleccionada.value.id}/`)
@@ -212,6 +217,8 @@ const eliminarRutaDefinitiva = async () => {
     console.error('Error al eliminar:', error)
     toast.error('Ocurrió un error al intentar eliminar la ruta.')
     cerrarModalEliminar()
+  } finally {
+    eliminandoRuta.value = false
   }
 }
 
@@ -224,6 +231,13 @@ const rutasFiltradas = computed(() => {
       r.nombre.toLowerCase().includes(termino)
   )
 })
+
+const rutasPaginadas = computed(() => {
+  const inicio = (paginaActual.value - 1) * RUTAS_POR_PAGINA
+  return rutasFiltradas.value.slice(inicio, inicio + RUTAS_POR_PAGINA)
+})
+
+watch(busqueda, () => { paginaActual.value = 1 })
 
 
 // Función para descargar GTFS

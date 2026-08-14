@@ -286,6 +286,13 @@ const cargarDatosParaEdicion = async (idRuta) => {
 
     if (puntosRuta.value.length > 0) {
       redibujarRuta()
+      const primerPunto = puntosRuta.value[0]
+      const latitud = parseFloat(primerPunto.lat)
+      const longitud = parseFloat(primerPunto.lng)
+      if (map && Number.isFinite(latitud) && Number.isFinite(longitud)) {
+        // Sólo mueve el centro: conserva exactamente el nivel de zoom inicial.
+        map.panTo([latitud, longitud], { animate: false })
+      }
     }
 
     toast.success('¡Datos cargados correctamente!')

@@ -169,6 +169,44 @@
         </button>
       </section>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="mostrarAlertaDesactivado"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="titulo-cuenta-desactivada"
+      >
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+          <div class="flex items-center gap-3 text-amber-600">
+            <div class="p-2.5 bg-amber-100 rounded-xl shrink-0">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h2 id="titulo-cuenta-desactivada" class="font-bold text-gray-900 text-base">Cuenta desactivada</h2>
+              <p class="text-xs text-gray-500">El acceso a la plataforma está suspendido.</p>
+            </div>
+          </div>
+
+          <p class="bg-amber-50 p-3 rounded-xl border border-amber-100 text-xs text-amber-900 leading-relaxed">
+            Tu cuenta fue desactivada por un usuario administrador. Contacta al administrador del sistema para solicitar que vuelva a activarla.
+          </p>
+
+          <div class="flex justify-end pt-1">
+            <button
+              type="button"
+              class="px-5 py-2 text-xs font-bold text-white bg-brand hover:opacity-90 rounded-xl shadow-sm transition"
+              @click="mostrarAlertaDesactivado = false"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -195,6 +233,7 @@ const passwordConfirmar = ref('')
 const cargando = ref(false)
 const mensajeError = ref('')
 const mensajeExito = ref('')
+const mostrarAlertaDesactivado = ref(false)
 
 onMounted(() => {
   if (route.query.recuperar === '1') abrirRecuperacion()
@@ -223,7 +262,11 @@ const manejarLogin = async () => {
     setSession(response.data.token, response.data.usuario)
     await router.push('/dashboard')
   } catch (error) {
-    mensajeError.value = obtenerMensajeError(error, 'No se pudo conectar con el servidor.')
+    if (error.response?.data?.codigo === 'cuenta_desactivada') {
+      mostrarAlertaDesactivado.value = true
+    } else {
+      mensajeError.value = obtenerMensajeError(error, 'No se pudo conectar con el servidor.')
+    }
   } finally {
     cargando.value = false
   }

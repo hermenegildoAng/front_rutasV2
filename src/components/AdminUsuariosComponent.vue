@@ -117,7 +117,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 text-sm">
-            <tr v-for="user in listaUsuarios" :key="user.id" class="hover:bg-gray-50/50 transition-colors">
+            <tr v-for="user in usuariosPaginados" :key="user.id" class="hover:bg-gray-50/50 transition-colors">
               <td class="py-4 px-6">
                 <div class="font-semibold text-gray-900">{{ user.nombre_completo || user.username }}</div>
                 <div class="text-xs text-gray-400 font-mono">@{{ user.username }}</div>
@@ -145,14 +145,23 @@
                 </span>
               </td>
               <td class="py-4 px-6 text-right">
-                <button
-                  @click="toggleEstado(user)"
-                  :disabled="user.id === usuarioActualId"
-                  :class="user.activo ? 'text-red-600 hover:bg-red-50 border border-red-200' : 'text-purple-700 hover:bg-purple-50 border border-purple-200'"
-                  class="px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
-                >
-                  {{ user.activo ? 'Desactivar' : 'Activar' }}
-                </button>
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="toggleEstado(user)"
+                    :disabled="user.id === usuarioActualId"
+                    :class="user.activo ? 'text-red-600 hover:bg-red-50 border border-red-200' : 'text-purple-700 hover:bg-purple-50 border border-purple-200'"
+                    class="px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {{ user.activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                  <button
+                    @click="abrirModalEliminar(user)"
+                    :disabled="user.id === usuarioActualId"
+                    class="px-3 py-1 text-xs font-bold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -161,21 +170,30 @@
 
       <!-- Vista Cards (Móviles) -->
       <div v-if="!cargando && listaUsuarios.length > 0" class="block md:hidden grid grid-cols-1 gap-4">
-        <div v-for="user in listaUsuarios" :key="'card-' + user.id" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+        <div v-for="user in usuariosPaginados" :key="'card-' + user.id" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
           <div class="flex justify-between items-start gap-2">
             <div>
               <div class="font-bold text-gray-900 text-base">{{ user.nombre_completo || user.username }}</div>
               <div class="text-xs text-purple-700 font-mono font-semibold">@{{ user.username }}</div>
               <div class="text-xs text-gray-400 font-mono mt-0.5">{{ user.email }}</div>
             </div>
-            <button
-              @click="toggleEstado(user)"
-              :disabled="user.id === usuarioActualId"
-              :class="user.activo ? 'text-red-600 bg-red-50' : 'text-purple-700 bg-purple-50'"
-              class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-95"
-            >
-              {{ user.activo ? 'Desactivar' : 'Activar' }}
-            </button>
+            <div class="flex flex-col items-end gap-1.5">
+              <button
+                @click="toggleEstado(user)"
+                :disabled="user.id === usuarioActualId"
+                :class="user.activo ? 'text-red-600 bg-red-50' : 'text-purple-700 bg-purple-50'"
+                class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-40"
+              >
+                {{ user.activo ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button
+                @click="abrirModalEliminar(user)"
+                :disabled="user.id === usuarioActualId"
+                class="px-2.5 py-1 text-xs font-bold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-40"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
 
           <div class="flex items-center justify-between pt-2 border-t border-gray-50">
@@ -198,14 +216,37 @@
           </div>
         </div>
       </div>
+
+      <PaginadorComponent
+        v-model="paginaActual"
+        :total="listaUsuarios.length"
+        :por-pagina="USUARIOS_POR_PAGINA"
+      />
     </div>
+
+    <ConfirmacionEliminarComponent
+      :model-value="mostrandoModalEliminar"
+      titulo="¿Eliminar usuario?"
+      titulo-id="titulo-eliminar-usuario"
+      texto-confirmar="Sí, eliminar usuario"
+      :cargando="cargandoEliminar"
+      @cancelar="cerrarModalEliminar"
+      @confirmar="confirmarEliminar"
+    >
+      Estás a punto de borrar al usuario
+      <span class="font-bold text-gray-900">{{ usuarioEliminar?.nombre_completo || usuarioEliminar?.username }}</span>
+      (<span class="font-mono">@{{ usuarioEliminar?.username }}</span>).
+      Su cuenta y sus sesiones se eliminarán permanentemente.
+    </ConfirmacionEliminarComponent>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useUsuarios } from '@/composables/useUsuarios'
 import { getUser } from '@/services/auth'
+import ConfirmacionEliminarComponent from './ConfirmacionEliminarComponent.vue'
+import PaginadorComponent from './PaginadorComponent.vue'
 
 const usuarioActualId = getUser()?.id
 
@@ -220,17 +261,25 @@ const {
   agregarUsuario,
   toggleEstado,
   actualizarRol,
+  usuarioEliminar,
+  mostrandoModalEliminar,
+  cargandoEliminar,
+  abrirModalEliminar,
+  cerrarModalEliminar,
+  confirmarEliminar,
 } = useUsuarios()
+
+const paginaActual = ref(1)
+const USUARIOS_POR_PAGINA = 6
+const usuariosPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * USUARIOS_POR_PAGINA
+  return listaUsuarios.value.slice(inicio, inicio + USUARIOS_POR_PAGINA)
+})
 
 const cambiarRol = (usuario, event) => {
   const anterior = usuario.tipo_usuario
   usuario.tipo_usuario = event.target.value
   actualizarRol(usuario, anterior)
-}
-
-const badgeRol = (rol) => {
-  if (rol === 'admin') return 'bg-brand text-brand border border-brand'
-  return 'bg-blue-50 text-blue-600 border border-blue-100'
 }
 
 onMounted(() => {

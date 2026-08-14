@@ -29,11 +29,15 @@
           v-model="form[campo.key]" 
           type="text"
           :placeholder="campo.placeholder"
+          :maxlength="campo.maxlength"
           class="w-full px-4 py-3 rounded-2xl border bg-white text-sm outline-none transition-all duration-200 font-medium"
           :class="errores[campo.key] ? 'border-red-500 focus:ring-2 focus:ring-red-500 bg-red-50/20' : 'border-gray-200 focus:ring-2 focus:ring-brand text-gray-900'"
         />
         <p v-if="errores[campo.key]" class="text-xs text-red-500 mt-1 font-medium pl-1">
           {{ errores[campo.key] }}
+        </p>
+        <p v-else-if="campo.maxlength" class="text-[10px] text-gray-400 mt-1 text-right pr-1">
+          {{ String(form[campo.key] || '').length }}/{{ campo.maxlength }} caracteres
         </p>
       </div>
     </div>
@@ -76,7 +80,7 @@ const { agencias, obtenerAgencias } = useAgencias()
 
 const camposGenerales = ref([
   { key: 'route_id', label: 'Folio Interno de Ruta (SMyT)', placeholder: 'Ej. RUTA-HUA-05' },
-  { key: 'route_short_name', label: 'Nombre Corto / Identificador (route_short_name)', placeholder: 'Ej. R-10' },
+  { key: 'route_short_name', label: 'Nombre Corto / Identificador (route_short_name)', placeholder: 'Ej. R-10', maxlength: 20 },
   { key: 'route_long_name', label: 'Nombre Largo Completo (route_long_name)', placeholder: 'Ej. Huamantla Centro - Ocotlán' },
   { key: 'agency_id', label: 'Agencia / Operadora Concesionaria', opciones: [] },
   { 

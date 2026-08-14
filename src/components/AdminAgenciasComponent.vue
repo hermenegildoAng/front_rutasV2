@@ -118,7 +118,7 @@
       <!-- GRID DE CARDS -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div
-          v-for="agencia in agencias"
+          v-for="agencia in agenciasPaginadas"
           :key="agencia.agency_id"
           class="group relative flex flex-col justify-between p-4 bg-gray-50/50 hover:bg-white rounded-xl border border-gray-100 hover:border-brand-200 hover:shadow-md transition-all duration-200 space-y-3"
         >
@@ -183,6 +183,11 @@
         </div>
       </div>
 
+      <PaginadorComponent
+        v-model="paginaActual"
+        :total="agencias.length"
+        :por-pagina="AGENCIAS_POR_PAGINA"
+      />
 
     </div>
 
@@ -287,55 +292,24 @@
   </div>
 
 
-  <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN  -->
-<Teleport to="body">
-  <div 
-    v-if="mostrandoModalEliminar" 
-    class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4"
+  <ConfirmacionEliminarComponent
+    :model-value="mostrandoModalEliminar"
+    titulo="¿Eliminar agencia?"
+    titulo-id="titulo-eliminar-agencia"
+    :cargando="cargandoEliminar"
+    @cancelar="cerrarModalEliminar"
+    @confirmar="confirmarEliminar"
   >
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 transform transition-all space-y-4">
-      
-      <div class="flex items-center gap-3 text-red-600">
-        <div class="p-2.5 bg-red-100 rounded-xl">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-gray-900 text-base">¿Eliminar agencia?</h3>
-          <p class="text-xs text-gray-500">Esta acción no se puede deshacer.</p>
-        </div>
-      </div>
-
-      <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs text-gray-600">
-        Estás a punto de borrar la agencia <span class="font-bold text-gray-900 font-mono">{{ agenciaEliminar?.agency_id }}</span> ({{ agenciaEliminar?.agency_name }}).
-      </div>
-
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button
-          @click="cerrarModalEliminar"
-          :disabled="cargandoEliminar"
-          class="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
-        >
-          Cancelar
-        </button>
-        <button
-          @click="confirmarEliminar"
-          :disabled="cargandoEliminar"
-          class="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
-        >
-          <span v-if="cargandoEliminar">Eliminando...</span>
-          <span v-else>Sí, eliminar</span>
-        </button>
-      </div>
-
-    </div>
-  </div>
-</Teleport>
+    Estás a punto de borrar la agencia
+    <span class="font-bold text-gray-900 font-mono">{{ agenciaEliminar?.agency_id }}</span>
+    ({{ agenciaEliminar?.agency_name }}).
+  </ConfirmacionEliminarComponent>
 </template>
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAgencias } from '@/composables/useAgencias'
+import ConfirmacionEliminarComponent from './ConfirmacionEliminarComponent.vue'
+import PaginadorComponent from './PaginadorComponent.vue'
 
 defineProps({
   rol: String,
@@ -363,6 +337,13 @@ const {
   cerrarModalEliminar,
   confirmarEliminar
 } = useAgencias()
+
+const paginaActual = ref(1)
+const AGENCIAS_POR_PAGINA = 6
+const agenciasPaginadas = computed(() => {
+  const inicio = (paginaActual.value - 1) * AGENCIAS_POR_PAGINA
+  return agencias.value.slice(inicio, inicio + AGENCIAS_POR_PAGINA)
+})
 
 onMounted(() => {
   obtenerAgencias()
