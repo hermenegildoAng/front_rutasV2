@@ -118,7 +118,8 @@
 import { computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import logo from '../assets/logo.jpeg'
+//import logo from '../assets/logo.jpeg'
+import logo from '../assets/logo.png'
 import { clearSession } from '../services/auth'
 import {
   Map as MapIcon,

@@ -176,7 +176,8 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
-import logo from '../assets/logo.jpeg'
+//import logo from '../assets/logo.jpeg'
+import logo from '../assets/logo.png'
 import { setSession } from '../services/auth'
 
 const API_AUTH = 'http://127.0.0.1:8000/api/auth/'
@@ -184,7 +185,7 @@ const route = useRoute()
 const router = useRouter()
 
 const vista = ref('login')
-const pasoRecuperacion = ref('correo')
+const pasoRecuperacion = ref('correo')  
 const identificador = ref('')
 const password = ref('')
 const emailRecuperacion = ref('')
