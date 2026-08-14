@@ -36,6 +36,9 @@ export function useRutaValidation() {
     if (!form.route_short_name || !String(form.route_short_name).trim()) {
       errores.value.route_short_name = 'El nombre corto es obligatorio.'
       esValido = false
+    } else if (String(form.route_short_name).trim().length > 20) {
+      errores.value.route_short_name = 'El nombre corto no puede exceder los 20 caracteres.'
+      esValido = false
     }
 
     if (!form.route_long_name || !String(form.route_long_name).trim()) {

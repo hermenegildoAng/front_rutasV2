@@ -11,6 +11,9 @@ export function useUsuarios() {
   const cargando = ref(true)
   const guardando = ref(false)
   const passwordTemporal = ref('')
+  const usuarioEliminar = ref(null)
+  const mostrandoModalEliminar = ref(false)
+  const cargandoEliminar = ref(false)
 
   const nuevoUsuario = ref({
     nombre_completo: '',
@@ -219,6 +222,36 @@ export function useUsuarios() {
     }
   }
 
+  const abrirModalEliminar = (usuario) => {
+    usuarioEliminar.value = usuario
+    mostrandoModalEliminar.value = true
+  }
+
+  const cerrarModalEliminar = () => {
+    if (cargandoEliminar.value) return
+    usuarioEliminar.value = null
+    mostrandoModalEliminar.value = false
+  }
+
+  const confirmarEliminar = async () => {
+    if (!usuarioEliminar.value || cargandoEliminar.value) return
+    cargandoEliminar.value = true
+    try {
+      await axios.delete(`${API_URL}${usuarioEliminar.value.id}/`)
+      listaUsuarios.value = listaUsuarios.value.filter(
+        (usuario) => usuario.id !== usuarioEliminar.value.id
+      )
+      toast.success('Usuario eliminado correctamente.')
+      usuarioEliminar.value = null
+      mostrandoModalEliminar.value = false
+    } catch (error) {
+      const detalle = error.response?.data?.error || error.response?.data?.detail
+      toast.error(detalle || 'No se pudo eliminar el usuario.')
+    } finally {
+      cargandoEliminar.value = false
+    }
+  }
+
   return {
     listaUsuarios,
     cargando,
@@ -230,5 +263,11 @@ export function useUsuarios() {
     agregarUsuario,
     toggleEstado,
     actualizarRol,
+    usuarioEliminar,
+    mostrandoModalEliminar,
+    cargandoEliminar,
+    abrirModalEliminar,
+    cerrarModalEliminar,
+    confirmarEliminar,
   }
 }
