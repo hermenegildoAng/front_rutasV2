@@ -27,8 +27,8 @@
         <!-- Botón Descargar GTFS -->
         <button 
           v-if="rol === 'admin'"
-          @click="descargarGTFS" 
-          :disabled="descargandoGTFS"
+          @click="abrirModalGTFS"
+          :disabled="descargandoGTFS || rutas.length === 0"
           class="w-full sm:w-auto flex items-center justify-center gap-2 bg-brand hover:bg-brand/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"  
         >
           <!-- Spinner cargando -->
@@ -134,11 +134,112 @@
       También se eliminarán permanentemente su geometría, paradas y horarios asociados.
     </ConfirmacionEliminarComponent>
 
+    <!-- Flujo de confirmación, generación y descarga del GTFS -->
+    <Teleport to="body">
+      <div
+        v-if="mostrarModalGTFS"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-generar-gtfs"
+        @click.self="cerrarModalGTFS"
+      >
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5">
+          <div class="flex items-center gap-3">
+            <div
+              :class="estadoGeneracionGTFS === 'listo' ? 'bg-emerald-100 text-emerald-700' : estadoGeneracionGTFS === 'error' ? 'bg-red-100 text-red-600' : 'bg-purple-100 text-brand'"
+              class="p-2.5 rounded-xl shrink-0"
+            >
+              <svg v-if="estadoGeneracionGTFS === 'listo'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <svg v-else-if="estadoGeneracionGTFS === 'error'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 110 18 9 9 0 010-18z" />
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" />
+              </svg>
+            </div>
+            <div>
+              <h3 id="titulo-generar-gtfs" class="font-bold text-gray-900 text-base">
+                {{ tituloModalGTFS }}
+              </h3>
+              <p class="text-xs text-gray-500">Exportación del inventario en formato GTFS.</p>
+            </div>
+          </div>
+
+          <div
+            v-if="estadoGeneracionGTFS === 'confirmacion'"
+            class="bg-purple-50 p-4 rounded-xl border border-purple-100 text-sm text-gray-700 leading-relaxed"
+          >
+            Se procesarán
+            <strong class="text-brand text-base">{{ totalRutasParaGTFS }}</strong>
+            {{ totalRutasParaGTFS === 1 ? 'ruta registrada' : 'rutas registradas' }}
+            para construir el archivo GTFS. ¿Deseas continuar?
+          </div>
+
+          <div v-else-if="estadoGeneracionGTFS === 'generando'" class="py-5 text-center space-y-3">
+            <svg class="animate-spin h-9 w-9 text-brand mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm font-bold text-gray-800">Procesando {{ totalRutasParaGTFS }} rutas...</p>
+            <p class="text-xs text-gray-500">Espera mientras se construyen los archivos y el paquete ZIP.</p>
+          </div>
+
+          <div
+            v-else-if="estadoGeneracionGTFS === 'listo'"
+            class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 text-sm text-emerald-900 leading-relaxed"
+          >
+            El archivo se generó correctamente con
+            <strong>{{ totalRutasParaGTFS }}</strong>
+            {{ totalRutasParaGTFS === 1 ? 'ruta' : 'rutas' }}. Ya está listo para descargarse.
+          </div>
+
+          <div
+            v-else
+            class="bg-red-50 p-4 rounded-xl border border-red-100 text-sm text-red-800 leading-relaxed"
+          >
+            No fue posible generar el archivo GTFS. Puedes cerrar este cuadro o intentarlo nuevamente.
+          </div>
+
+          <div v-if="estadoGeneracionGTFS !== 'generando'" class="flex items-center justify-end gap-3 pt-1">
+            <button
+              type="button"
+              class="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              @click="cerrarModalGTFS"
+            >
+              {{ estadoGeneracionGTFS === 'listo' ? 'Cerrar' : 'Cancelar' }}
+            </button>
+            <button
+              v-if="estadoGeneracionGTFS === 'confirmacion' || estadoGeneracionGTFS === 'error'"
+              type="button"
+              class="px-4 py-2 text-xs font-bold text-white bg-brand hover:opacity-90 rounded-xl shadow-sm transition-colors"
+              @click="generarGTFS"
+            >
+              {{ estadoGeneracionGTFS === 'error' ? 'Intentar de nuevo' : 'Sí, generar GTFS' }}
+            </button>
+            <button
+              v-else-if="estadoGeneracionGTFS === 'listo'"
+              type="button"
+              class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors"
+              @click="descargarArchivoGTFS"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Descargar archivo
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import ConfirmacionEliminarComponent from './ConfirmacionEliminarComponent.vue'
@@ -240,50 +341,81 @@ const rutasPaginadas = computed(() => {
 watch(busqueda, () => { paginaActual.value = 1 })
 
 
-// Función para descargar GTFS
-const descargandoGTFS = ref(false);
+// Flujo para confirmar, generar y descargar el archivo GTFS.
+const descargandoGTFS = ref(false)
+const mostrarModalGTFS = ref(false)
+const estadoGeneracionGTFS = ref('confirmacion')
+const totalRutasParaGTFS = ref(0)
+const archivoGTFSUrl = ref(null)
 
-const descargarGTFS = async () => {
-  descargandoGTFS.value = true;
-  
-  try {
-    // IMPORTANTE: Asegúrate de poner la ruta correcta de tu backend en Django
-    const urlEndpoint = 'http://localhost:8000/api/maps/generar-gtfs/'; 
-    
-    const response = await axios.get(urlEndpoint, {
-      responseType: 'blob', // CLAVE: Necesario para que el archivo .zip no llegue corrupto
-    });
+const tituloModalGTFS = computed(() => ({
+  confirmacion: 'Confirmar generación de GTFS',
+  generando: 'Generando archivo GTFS',
+  listo: 'GTFS generado correctamente',
+  error: 'No se pudo generar el GTFS',
+}[estadoGeneracionGTFS.value]))
 
-    // 1. Crear una URL temporal en el navegador con los datos binarios (blob)
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    
-    // 2. Crear un elemento <a> invisible
-    const link = document.createElement('a');
-    link.href = url;
-    
-    // 3. Asignar el nombre con el que se va a descargar el archivo
-    link.setAttribute('download', 'rutas_gtfs.zip'); 
-    
-    // 4. Agregar al DOM, hacer click y limpiar
-    document.body.appendChild(link);
-    link.click();
-    
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-  } catch (error) {
-    console.error("Error al descargar el archivo GTFS:", error);
-    // Aquí puedes meter una alerta bonita si usas SweetAlert o Toast
-    alert("Hubo un error al generar el GTFS. Revisa la consola.");
-  } finally {
-    // Regresar el botón a la normalidad
-    descargandoGTFS.value = false;
+const limpiarArchivoGTFS = () => {
+  if (archivoGTFSUrl.value) {
+    window.URL.revokeObjectURL(archivoGTFSUrl.value)
+    archivoGTFSUrl.value = null
   }
-};
-///
+}
+
+const abrirModalGTFS = () => {
+  limpiarArchivoGTFS()
+  totalRutasParaGTFS.value = rutas.value.length
+  estadoGeneracionGTFS.value = 'confirmacion'
+  mostrarModalGTFS.value = true
+}
+
+const cerrarModalGTFS = () => {
+  if (descargandoGTFS.value) return
+  mostrarModalGTFS.value = false
+  limpiarArchivoGTFS()
+}
+
+const generarGTFS = async () => {
+  descargandoGTFS.value = true
+  estadoGeneracionGTFS.value = 'generando'
+  limpiarArchivoGTFS()
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/maps/generar-gtfs/', {
+      responseType: 'blob',
+    })
+    const archivo = response.data instanceof Blob
+      ? response.data
+      : new Blob([response.data], { type: 'application/zip' })
+    archivoGTFSUrl.value = window.URL.createObjectURL(archivo)
+    estadoGeneracionGTFS.value = 'listo'
+    toast.success(`GTFS generado correctamente con ${totalRutasParaGTFS.value} rutas.`)
+  } catch (error) {
+    console.error('Error al generar el archivo GTFS:', error)
+    estadoGeneracionGTFS.value = 'error'
+    toast.error('No fue posible generar el archivo GTFS.')
+  } finally {
+    descargandoGTFS.value = false
+  }
+}
+
+const descargarArchivoGTFS = () => {
+  if (!archivoGTFSUrl.value) return
+  const link = document.createElement('a')
+  link.href = archivoGTFSUrl.value
+  link.download = `rutas_gtfs_${new Date().toISOString().slice(0, 10)}.zip`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  toast.info('La descarga del archivo GTFS ha comenzado.')
+}
 
 
 onMounted(() => {
   cargarRutas()
+})
+
+onBeforeUnmount(() => {
+  limpiarArchivoGTFS()
 })
 </script>

@@ -16,8 +16,8 @@
       v-if="modoActivo && !soloLectura"
       class="absolute bottom-6 right-6 z-40 bg-brand text-white text-xs px-4 py-2 rounded-xl shadow-lg font-bold uppercase tracking-wider flex items-center gap-2"
     >
-      {{ modoActivo === 'trazar' ? 'Modo Trazo: Click para agregar puntos' : 'Modo Parada: Click para colocar parada' }}
-      <button @click="activarModo(null)" class="opacity-70 hover:opacity-100 font-bold ml-1">✕</button>
+      {{ textoModoActivo }}
+      <button @click="toggleModo(modoActivo)" class="opacity-70 hover:opacity-100 font-bold ml-1">✕</button>
     </div>
 
     <button
@@ -123,6 +123,14 @@
           <!-- Componentes flotantes -->
           <BuscadorArchivoRuta @puntos-cargados="manejarPuntosDesdeArchivo" />
 
+          <ModoArrastreRuta
+            v-if="!soloLectura"
+            :activo="modoActivo === 'arrastrar'"
+            :cantidad-puntos="puntosRuta.length"
+            :cantidad-paradas="form.paradas.length"
+            @toggle="toggleModo('arrastrar')"
+          />
+
           <PanelPuntosRuta
             v-model="puntosRuta"
             :modo-activo="modoActivo"
@@ -139,10 +147,11 @@
 
 <script setup>
 import axios from 'axios'
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BuscadorArchivoRuta from './rutas/BuscadorArchivoRuta.vue'
+import ModoArrastreRuta from './rutas/ModoArrastreRuta.vue'
 import PanelPuntosRuta from './rutas/PanelPuntosRuta.vue'
 import PasoGeneral from './rutas/pasos/PasoGeneral.vue'
 import PasoCalendarios from './rutas/pasos/PasoCalendarios.vue'
@@ -172,14 +181,21 @@ L.Icon.Default.mergeOptions({
 })
 
 
-const iconoParada = L.divIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6b21a8" width="32" height="32">
+const crearIconoParada = (arrastrable = false) => L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6b21a8" width="32" height="32" style="cursor: ${arrastrable ? 'grab' : 'pointer'}">
     <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.013 3.5-4.512 3.5-7.327a8 8 0 10-16 0c0 2.815 1.556 5.314 3.5 7.327a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
   </svg>`,
   className: '',
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
+})
+
+const crearIconoPuntoRuta = (arrastrable = false) => L.divIcon({
+  html: `<span style="display:block;width:12px;height:12px;border-radius:9999px;background:#6b21a8;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:${arrastrable ? 'grab' : 'pointer'}"></span>`,
+  className: '',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
 })
 
 // ========================= ESTADO REACTIVO =========================
@@ -205,6 +221,11 @@ const pasos = ['general', 'calendarios', 'paradas', 'viaje_regreso']
 const modoActivo = ref(null)
 const formularioVisible = ref(true)
 const panelDerechoVisible = ref(true)
+const textoModoActivo = computed(() => ({
+  trazar: 'Modo Trazo: Click para agregar puntos',
+  parada: 'Modo Parada: Click para colocar parada',
+  arrastrar: 'Modo Mover: Arrastra puntos o paradas para reubicarlos',
+}[modoActivo.value] || ''))
 
 // Instancias de Capas de Leaflet
 let polylineRuta = null
@@ -330,11 +351,13 @@ const toggleModo = (modo) => {
   
   if (map) {
     const container = map.getContainer()
-    if (modoActivo.value) {
+    if (modoActivo.value === 'trazar' || modoActivo.value === 'parada') {
       container.style.cursor = 'crosshair' 
     } else {
       container.style.cursor = 'grab'
     }
+    redibujarRuta()
+    redibujarTodosLosMarcadoresParadas()
   }
 }
 
@@ -403,24 +426,71 @@ onMounted(() => {
 onBeforeUnmount(() => { if (map) map.remove() })
 
 const redibujarRuta = () => {
+  if (!map) return
   if (polylineRuta) { map.removeLayer(polylineRuta); polylineRuta = null }
   marcadoresPuntos.forEach((m) => map.removeLayer(m))
   marcadoresPuntos = []
 
-  const coords = puntosRuta.value
-    .filter((p) => p.lat !== '' && p.lng !== '' && !isNaN(parseFloat(p.lat)) && !isNaN(parseFloat(p.lng)))
-    .map((p) => [parseFloat(p.lat), parseFloat(p.lng)])
+  const puntosValidos = puntosRuta.value
+    .map((punto, index) => ({
+      index,
+      lat: parseFloat(punto.lat),
+      lng: parseFloat(punto.lng),
+    }))
+    .filter((punto) => Number.isFinite(punto.lat) && Number.isFinite(punto.lng))
 
-  if (coords.length < 2) return
+  if (puntosValidos.length === 0) return
 
   // Trazado de línea geométrica principal
-  polylineRuta = L.polyline(coords, { color: '#6b21a8', weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(map)
+  if (puntosValidos.length >= 2) {
+    polylineRuta = L.polyline(
+      puntosValidos.map((punto) => [punto.lat, punto.lng]),
+      { color: '#6b21a8', weight: 4, opacity: 0.85, lineJoin: 'round', lineCap: 'round' },
+    ).addTo(map)
+  }
 
-  coords.forEach(([lat, lng], i) => {
-    const m = L.circleMarker([lat, lng], { radius: 5, fillColor: '#6b21a8', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map)
-    m.bindTooltip(`Punto ${i + 1}`, { permanent: false, direction: 'top' })
-    marcadoresPuntos.push(m)
+  const arrastrable = modoActivo.value === 'arrastrar' && !props.soloLectura
+  puntosValidos.forEach((punto) => {
+    const marcador = L.marker([punto.lat, punto.lng], {
+      icon: crearIconoPuntoRuta(arrastrable),
+      draggable: arrastrable,
+      keyboard: false,
+      autoPan: true,
+      zIndexOffset: arrastrable ? 500 : 0,
+    }).addTo(map)
+
+    marcador.bindTooltip(
+      arrastrable ? `Punto ${punto.index + 1}: arrastra para mover` : `Punto ${punto.index + 1}`,
+      { permanent: false, direction: 'top' },
+    )
+
+    if (arrastrable) {
+      marcador.on('drag', (evento) => {
+        actualizarLineaDuranteArrastre(punto.index, evento.target.getLatLng())
+      })
+      marcador.on('dragend', (evento) => {
+        const posicion = evento.target.getLatLng()
+        puntosRuta.value[punto.index] = {
+          ...puntosRuta.value[punto.index],
+          lat: posicion.lat.toFixed(6),
+          lng: posicion.lng.toFixed(6),
+        }
+      })
+    }
+
+    marcadoresPuntos.push(marcador)
   })
+}
+
+const actualizarLineaDuranteArrastre = (indicePunto, posicion) => {
+  if (!polylineRuta) return
+  const coordenadas = puntosRuta.value
+    .map((punto, index) => {
+      if (index === indicePunto) return [posicion.lat, posicion.lng]
+      return [parseFloat(punto.lat), parseFloat(punto.lng)]
+    })
+    .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng))
+  polylineRuta.setLatLngs(coordenadas)
 }
 
 const borrarTrazo = () => {
@@ -429,7 +499,10 @@ const borrarTrazo = () => {
   marcadoresPuntos = []
   puntosRuta.value = []
   modoActivo.value = null
-  if (map) map.getContainer().style.cursor = 'grab'
+  if (map) {
+    map.getContainer().style.cursor = 'grab'
+    redibujarTodosLosMarcadoresParadas()
+  }
 }
 
 // ========================= CONTROL CARTOGRÁFICO DE PARADAS =========================
@@ -439,13 +512,32 @@ const limpiarTodosLosMarcadoresParada = () => {
 }
 
 const redibujarTodosLosMarcadoresParadas = () => {
+  if (!map) return
   limpiarTodosLosMarcadoresParada()
+  const arrastrable = modoActivo.value === 'arrastrar' && !props.soloLectura
   form.value.paradas.forEach((parada, i) => {
     const lat = parseFloat(parada.latitud)
     const lng = parseFloat(parada.longitud)
     if (!isNaN(lat) && !isNaN(lng)) {
-      const marcador = L.marker([lat, lng], { icon: iconoParada }).addTo(map)
+      const marcador = L.marker([lat, lng], {
+        icon: crearIconoParada(arrastrable),
+        draggable: arrastrable,
+        autoPan: true,
+        zIndexOffset: arrastrable ? 1000 : 0,
+      }).addTo(map)
         .bindPopup(`<b>${parada.nombre_parada || 'Parada ' + (i + 1)}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
+
+      if (arrastrable) {
+        marcador.bindTooltip('Arrastra para mover esta parada', { direction: 'top' })
+        marcador.on('dragend', (evento) => {
+          const posicion = evento.target.getLatLng()
+          form.value.paradas[i] = {
+            ...form.value.paradas[i],
+            latitud: posicion.lat.toFixed(6),
+            longitud: posicion.lng.toFixed(6),
+          }
+        })
+      }
       marcadoresParadas[i] = marcador
     }
   })
