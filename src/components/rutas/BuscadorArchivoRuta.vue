@@ -74,7 +74,7 @@
         @click.stop="procesarArchivo"
         class="flex-1 px-3 py-1.5 bg-brand hover:opacity-90 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 cursor-pointer"
       >
-        Interpolar
+        Cargar
       </button>
     </div>
 
