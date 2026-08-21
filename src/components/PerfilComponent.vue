@@ -112,6 +112,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
+import { apiUrl } from '../services/api'
 import { setSession } from '../services/auth'
 
 const props = defineProps({
@@ -139,7 +140,7 @@ const mensajeError = ref('')
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/auth/perfil/')
+    const response = await axios.get(apiUrl('/api/auth/perfil/'))
     datosUsuario.value = response.data
     emit('usuarioActualizado', response.data)
   } catch {
@@ -169,7 +170,7 @@ const cambiarPassword = async () => {
   cargando.value = true
 
   try {
-    const response = await axios.post('http://127.0.0.1:8000/api/auth/cambiar-password/', {
+    const response = await axios.post(apiUrl('/api/auth/cambiar-password/'), {
       password_actual: passwordActual.value,
       password_nueva: passwordNueva.value,
       password_confirmar: passwordConfirmar.value,

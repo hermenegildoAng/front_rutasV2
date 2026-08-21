@@ -8,31 +8,57 @@
           {{ errores.calendarios }}
         </p>
       </div>
-      <button 
+      <button
         type="button"
-        @click="agregarCalendario" 
+        @click="agregarCalendario"
         class="px-3 py-1.5 rounded-xl bg-brand text-white text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-sm transition-all active:scale-95 cursor-pointer"
       >
         + Agregar Calendario
       </button>
     </div>
-    
+
+    <div v-if="form.calendarios.length > 0" class="flex justify-end px-1">
+      <button
+        type="button"
+        @click="colapsarTodos"
+        class="text-[10px] font-bold text-brand uppercase hover:underline cursor-pointer"
+      >
+        Minimizar todos
+      </button>
+    </div>
+
     <div class="space-y-5 pt-2">
-      <div 
-        v-for="(cal, calIndex) in form.calendarios" 
-        :key="calIndex" 
-        class="relative border border-gray-200 rounded-2xl bg-gray-50/50 overflow-hidden shadow-sm"
+      <div
+        v-for="(cal, calIndex) in form.calendarios"
+        :key="calIndex"
+        :class="[
+          'relative border rounded-2xl bg-gray-50/50 overflow-hidden shadow-sm transition-all',
+          cal._colapsado && tieneErroresCalendario(calIndex)
+            ? 'border-red-500 ring-1 ring-red-200 bg-red-50/40'
+            : 'border-gray-200'
+        ]"
       >
         <!-- CABECERA DE CALENDARIO -->
         <div class="flex items-center justify-between px-4 pt-4 pb-2 bg-gray-50">
           <div class="flex items-center gap-2">
+            <button
+              type="button"
+              :title="cal._colapsado ? 'Expandir calendario' : 'Minimizar calendario'"
+              class="p-1 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
+              @click="toggleColapso(cal)"
+            >
+              <component
+                :is="cal._colapsado ? ChevronRightIcon : ChevronDownIcon"
+                class="w-4 h-4"
+              />
+            </button>
             <span class="w-5 h-5 rounded-full bg-brand text-white text-[10px] flex items-center justify-center font-extrabold shadow-sm">
               {{ calIndex + 1 }}
             </span>
             <div>
-              <input 
-                v-model="cal.nombre" 
-                placeholder="Ej. Temporada Regular / Fines de Semana" 
+              <input
+                v-model="cal.nombre"
+                placeholder="Ej. Temporada Regular / Fines de Semana"
                 :class="[
                   'text-xs font-bold bg-transparent border-b outline-none px-1 py-0.5 w-60 transition-colors',
                   errores.calendariosList?.[calIndex]?.nombre
@@ -45,177 +71,178 @@
               </p>
             </div>
           </div>
-          <button 
+          <button
             type="button"
-            @click="eliminarCalendario(calIndex)" 
+            @click="eliminarCalendario(calIndex)"
             class="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
           >
             ✕ Quitar
           </button>
         </div>
 
-        <!-- FECHAS -->
-        <div class="px-4 py-3 grid grid-cols-2 gap-3 bg-white">
-          <div>
-            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-              Fecha Inicial (start_date)
+        <div v-show="!cal._colapsado">
+          <!-- FECHAS -->
+          <div class="px-4 py-3 grid grid-cols-2 gap-3 bg-white">
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                Fecha Inicial (start_date)
+              </label>
+              <input
+                type="date"
+                v-model="cal.fecha_inicial"
+                :class="[
+                  'w-full px-3 py-2 rounded-xl border text-xs outline-none focus:ring-2 font-medium transition-all',
+                  errores.calendariosList?.[calIndex]?.fecha_inicial
+                    ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
+                    : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
+                ]"
+              />
+              <p v-if="errores.calendariosList?.[calIndex]?.fecha_inicial" class="text-[10px] text-red-500 font-medium mt-1">
+                {{ errores.calendariosList[calIndex].fecha_inicial }}
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                Fecha Final (end_date)
+              </label>
+              <input
+                type="date"
+                v-model="cal.fecha_final"
+                :class="[
+                  'w-full px-3 py-2 rounded-xl border text-xs outline-none focus:ring-2 font-medium transition-all',
+                  errores.calendariosList?.[calIndex]?.fecha_final
+                    ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
+                    : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
+                ]"
+              />
+              <p v-if="errores.calendariosList?.[calIndex]?.fecha_final" class="text-[10px] text-red-500 font-medium mt-1">
+                {{ errores.calendariosList[calIndex].fecha_final }}
+              </p>
+            </div>
+          </div>
+
+          <!-- DÍAS DE LA SEMANA -->
+          <div class="px-4 pb-4 bg-white">
+            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+              Días de Operación de la Ruta
             </label>
-            <input 
-              type="date" 
-              v-model="cal.fecha_inicial" 
-              :class="[
-                'w-full px-3 py-2 rounded-xl border text-xs outline-none focus:ring-2 font-medium transition-all',
-                errores.calendariosList?.[calIndex]?.fecha_inicial
-                  ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
-                  : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
-              ]"
-            />
-            <p v-if="errores.calendariosList?.[calIndex]?.fecha_inicial" class="text-[10px] text-red-500 font-medium mt-1">
-              {{ errores.calendariosList[calIndex].fecha_inicial }}
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-              Fecha Final (end_date)
-            </label>
-            <input 
-              type="date" 
-              v-model="cal.fecha_final" 
-              :class="[
-                'w-full px-3 py-2 rounded-xl border text-xs outline-none focus:ring-2 font-medium transition-all',
-                errores.calendariosList?.[calIndex]?.fecha_final
-                  ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
-                  : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
-              ]"
-            />
-            <p v-if="errores.calendariosList?.[calIndex]?.fecha_final" class="text-[10px] text-red-500 font-medium mt-1">
-              {{ errores.calendariosList[calIndex].fecha_final }}
-            </p>
-          </div>
-        </div>
-
-        <!-- DÍAS DE LA SEMANA -->
-        <div class="px-4 pb-4 bg-white">
-          <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-            Días de Operación de la Ruta
-          </label>
-          <div class="flex gap-1">
-            <button 
-              type="button"
-              v-for="dia in diasSemana" 
-              :key="dia.key" 
-              @click="cal[dia.key] = !cal[dia.key]"
-              :class="cal[dia.key] ? 'bg-brand text-white border-brand shadow-sm' : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-brand hover:text-brand'"
-              class="w-9 h-8 flex items-center justify-center rounded-lg border text-xs font-bold transition-all select-none cursor-pointer"
-            >
-              {{ dia.short }}
-            </button>
-          </div>
-          <p v-if="errores.calendariosList?.[calIndex]?.dias" class="text-[10px] text-red-500 font-medium mt-1">
-            {{ errores.calendariosList[calIndex].dias }}
-          </p>
-        </div>
-
-        <div class="border-t border-gray-100"></div>
-
-        <!-- BLOQUES DE FRECUENCIA -->
-        <div class="p-4 bg-white/50 space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-              Bloques de Frecuencia de Despacho
-            </label>
-            <button 
-              type="button"
-              @click="agregarBloqueFrecuencia(calIndex)" 
-              class="text-[10px] px-2.5 py-1 rounded-lg bg-purple-50 text-brand border border-purple-100 hover:bg-brand hover:text-white transition-all font-bold uppercase tracking-wider cursor-pointer"
-            >
-              + Añadir Bloque
-            </button>
-          </div>
-
-          <div 
-            v-if="cal.bloques.length === 0" 
-            class="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl bg-white"
-          >
-            No hay frecuencias configuradas para este calendario.
-          </div>
-
-          <div 
-            v-for="(bloque, bloqueIndex) in cal.bloques" 
-            :key="bloqueIndex" 
-            class="bg-white border border-gray-200 rounded-xl p-3 space-y-2 shadow-sm"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-brand uppercase tracking-wide">
-                Bloque {{ letraBloque(bloqueIndex) }}
-              </span>
-              <button 
+            <div class="flex gap-1">
+              <button
                 type="button"
-                @click="eliminarBloqueFrecuencia(calIndex, bloqueIndex)" 
-                class="text-gray-300 hover:text-red-400 p-0.5 transition-colors cursor-pointer"
+                v-for="dia in diasSemana"
+                :key="dia.key"
+                @click="cal[dia.key] = !cal[dia.key]"
+                :class="cal[dia.key] ? 'bg-brand text-white border-brand shadow-sm' : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-brand hover:text-brand'"
+                class="w-9 h-8 flex items-center justify-center rounded-lg border text-xs font-bold transition-all select-none cursor-pointer"
               >
-                ✕
+                {{ dia.short }}
               </button>
             </div>
-            
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Salida Inicial</label>
-                <input 
-                  type="time" 
-                  v-model="bloque.desde" 
-                  :class="[
-                    'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-medium',
-                    errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.desde
-                      ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
-                      : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
-                  ]"
-                />
-              </div>
-
-              <div>
-                <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Última Salida</label>
-                <input 
-                  type="time" 
-                  v-model="bloque.hasta" 
-                  :class="[
-                    'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-medium',
-                    errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.hasta
-                      ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
-                      : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
-                  ]"
-                />
-              </div>
-
-              <div>
-                <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Intervalo (min)</label>
-                <input 
-                  type="number" 
-                  v-model="bloque.intervalo" 
-                  min="1" 
-                  placeholder="Ej. 15" 
-                  :class="[
-                    'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-mono',
-                    errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.intervalo
-                      ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
-                      : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
-                  ]"
-                />
-              </div>
-            </div>
-            
-            <p v-if="bloque.desde && bloque.hasta && bloque.intervalo" class="text-[10px] text-gray-400 font-medium bg-gray-50 p-2 rounded-lg border border-gray-100">
-               <span class="font-bold text-gray-600">Resumen:</span> Servicio continuo desde las {{ formatHora(bloque.desde) }} hasta las {{ formatHora(bloque.hasta) }}, despachando unidades cada {{ bloque.intervalo }} minutos.
+            <p v-if="errores.calendariosList?.[calIndex]?.dias" class="text-[10px] text-red-500 font-medium mt-1">
+              {{ errores.calendariosList[calIndex].dias }}
             </p>
           </div>
-        </div>
 
+          <div class="border-t border-gray-100"></div>
+
+          <!-- BLOQUES DE FRECUENCIA -->
+          <div class="p-4 bg-white/50 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                Bloques de Frecuencia de Despacho
+              </label>
+              <button
+                type="button"
+                @click="agregarBloqueFrecuencia(calIndex)"
+                class="text-[10px] px-2.5 py-1 rounded-lg bg-purple-50 text-brand border border-purple-100 hover:bg-brand hover:text-white transition-all font-bold uppercase tracking-wider cursor-pointer"
+              >
+                + Añadir Bloque
+              </button>
+            </div>
+
+            <div
+              v-if="cal.bloques.length === 0"
+              class="text-center py-4 text-xs text-gray-400 border border-dashed border-gray-200 rounded-xl bg-white"
+            >
+              No hay frecuencias configuradas para este calendario.
+            </div>
+
+            <div
+              v-for="(bloque, bloqueIndex) in cal.bloques"
+              :key="bloqueIndex"
+              class="bg-white border border-gray-200 rounded-xl p-3 space-y-2 shadow-sm"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-brand uppercase tracking-wide">
+                  Bloque {{ letraBloque(bloqueIndex) }}
+                </span>
+                <button
+                  type="button"
+                  @click="eliminarBloqueFrecuencia(calIndex, bloqueIndex)"
+                  class="text-gray-300 hover:text-red-400 p-0.5 transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Salida Inicial</label>
+                  <input
+                    type="time"
+                    v-model="bloque.desde"
+                    :class="[
+                      'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-medium',
+                      errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.desde
+                        ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
+                        : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
+                    ]"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Última Salida</label>
+                  <input
+                    type="time"
+                    v-model="bloque.hasta"
+                    :class="[
+                      'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-medium',
+                      errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.hasta
+                        ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
+                        : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
+                    ]"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-[9px] font-bold text-gray-400 uppercase mb-1">Intervalo (min)</label>
+                  <input
+                    type="number"
+                    v-model="bloque.intervalo"
+                    min="1"
+                    placeholder="Ej. 15"
+                    :class="[
+                      'w-full px-2 py-1.5 rounded-lg border text-xs outline-none focus:ring-2 font-mono',
+                      errores.calendariosList?.[calIndex]?.bloques?.[bloqueIndex]?.intervalo
+                        ? 'border-red-400 bg-red-50/30 text-red-900 focus:ring-red-400'
+                        : 'border-gray-200 bg-gray-50 focus:ring-brand focus:bg-white text-gray-900'
+                    ]"
+                  />
+                </div>
+              </div>
+
+              <p v-if="bloque.desde && bloque.hasta && bloque.intervalo" class="text-[10px] text-gray-400 font-medium bg-gray-50 p-2 rounded-lg border border-gray-100">
+                <span class="font-bold text-gray-600">Resumen:</span> Servicio continuo desde las {{ formatHora(bloque.desde) }} hasta las {{ formatHora(bloque.hasta) }}, despachando unidades cada {{ bloque.intervalo }} minutos.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    
-    <div 
-      v-if="form.calendarios.length === 0" 
+
+    <div
+      v-if="form.calendarios.length === 0"
       class="text-center py-8 text-xs text-gray-400 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50"
     >
       No hay configuraciones de itinerarios asignadas. Presiona el botón superior para añadir una nueva.
@@ -224,9 +251,14 @@
 </template>
 
 <script setup>
+import {
+  ChevronDown as ChevronDownIcon,
+  ChevronRight as ChevronRightIcon,
+} from '@lucide/vue'
+
 const form = defineModel({ type: Object, required: true })
 
-defineProps({
+const props = defineProps({
   errores: {
     type: Object,
     default: () => ({})
@@ -254,11 +286,28 @@ const formatHora = (t) => {
 
 const agregarCalendario = () => {
   form.value.calendarios.push({
-    nombre: '', 
+    nombre: '',
     lunes: false, martes: false, miercoles: false, jueves: false, viernes: false, sabado: false, domingo: false,
-    fecha_inicial: '', fecha_final: '', 
+    fecha_inicial: '', fecha_final: '',
     bloques: [],
+    _colapsado: false,
   })
+}
+
+const toggleColapso = (calendario) => {
+  calendario._colapsado = !calendario._colapsado
+}
+
+const colapsarTodos = () => {
+  const algunoAbierto = form.value.calendarios.some((calendario) => !calendario._colapsado)
+  form.value.calendarios.forEach((calendario) => {
+    calendario._colapsado = algunoAbierto
+  })
+}
+
+const tieneErroresCalendario = (index) => {
+  const errorCalendario = props.errores.calendariosList?.[index]
+  return Boolean(errorCalendario && Object.keys(errorCalendario).length > 0)
 }
 
 const eliminarCalendario = (i) => { form.value.calendarios.splice(i, 1) }

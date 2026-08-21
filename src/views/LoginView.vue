@@ -214,11 +214,12 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { apiUrl } from '../services/api'
 //import logo from '../assets/logo.jpeg'
 import logo from '../assets/logo.png'
 import { setSession } from '../services/auth'
 
-const API_AUTH = 'http://127.0.0.1:8000/api/auth/'
+const API_AUTH = apiUrl('/api/auth/')
 const route = useRoute()
 const router = useRouter()
 

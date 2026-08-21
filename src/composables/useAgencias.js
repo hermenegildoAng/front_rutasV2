@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import { apiUrl } from '../services/api'
 
-const API_URL = 'http://127.0.0.1:8000/api/transit/agencias/'
+const API_URL = apiUrl('/api/transit/agencias/')
 
 export function useAgencias() {
   const toast = useToast()

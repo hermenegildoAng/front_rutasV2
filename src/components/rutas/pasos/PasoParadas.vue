@@ -38,8 +38,14 @@
       <div 
         v-for="(parada, index) in form.paradas" 
         :key="'parada-' + parada.orden_parada" 
-        :class="['relative border rounded-2xl p-4 transition-all shadow-sm', 
-                 errores?.paradas?.[index]?.secuencia ? 'border-orange-400 bg-orange-50/30' : 'border-gray-200 bg-gray-50/50']"
+        :class="[
+          'relative border rounded-2xl p-4 transition-all shadow-sm',
+          parada._colapsado && tieneErroresParada(index)
+            ? 'border-red-500 ring-1 ring-red-200 bg-red-50/40'
+            : errores?.paradas?.[index]?.secuencia
+              ? 'border-orange-400 bg-orange-50/30'
+              : 'border-gray-200 bg-gray-50/50'
+        ]"
       >
         <!-- CABECERA DE LA PARADA (Siempre visible) -->
         <div class="flex items-center justify-between gap-2">
@@ -173,7 +179,7 @@ import {
 
 const form = defineModel({ type: Object, required: true })
 
-defineProps({
+const props = defineProps({
   modoActivo: { type: String, default: null },
   errores: { type: Object, default: () => ({ paradas: [] }) }
 })
@@ -182,6 +188,11 @@ const emit = defineEmits(['toggle-modo', 'actualizar-mapa'])
 
 const toggleColapso = (parada) => {
   parada._colapsado = !parada._colapsado
+}
+
+const tieneErroresParada = (index) => {
+  const errorParada = props.errores?.paradas?.[index]
+  return Boolean(errorParada && Object.keys(errorParada).length > 0)
 }
 
 const colapsarTodas = () => {

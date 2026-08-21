@@ -242,6 +242,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import { apiUrl } from '../services/api'
 import ConfirmacionEliminarComponent from './ConfirmacionEliminarComponent.vue'
 import PaginadorComponent from './PaginadorComponent.vue'
 
@@ -267,7 +268,7 @@ const eliminandoRuta = ref(false)
 // Funciones CRUD
 const cargarRutas = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/maps/rutas/')
+    const response = await axios.get(apiUrl('/api/maps/rutas/'))
     
     rutas.value = response.data.map((item) => ({
       id: item.id || item.route_id,
@@ -306,7 +307,7 @@ const eliminarRutaDefinitiva = async () => {
   eliminandoRuta.value = true
   try {
     // Asegúrate de que la URL termine en "/" y le pasemos el ID de la ruta seleccionada
-    await axios.delete(`http://localhost:8000/api/maps/rutas/${rutaSeleccionada.value.id}/`)
+    await axios.delete(apiUrl(`/api/maps/rutas/${rutaSeleccionada.value.id}/`))
     
     toast.success('Ruta y registros asociados eliminados con éxito.')
     
@@ -381,7 +382,7 @@ const generarGTFS = async () => {
   limpiarArchivoGTFS()
 
   try {
-    const response = await axios.get('http://localhost:8000/api/maps/generar-gtfs/', {
+    const response = await axios.get(apiUrl('/api/maps/generar-gtfs/'), {
       responseType: 'blob',
     })
     const archivo = response.data instanceof Blob

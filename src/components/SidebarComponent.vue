@@ -117,6 +117,7 @@
 <script setup>
 import { computed } from 'vue'
 import axios from 'axios'
+import { apiUrl } from '../services/api'
 import { useRouter } from 'vue-router'
 //import logo from '../assets/logo.jpeg'
 import logo from '../assets/logo.png'
@@ -150,7 +151,7 @@ const claseRol = computed(() => {
 
 const cerrarSesion = async () => {
   try {
-    await axios.post('http://127.0.0.1:8000/api/auth/logout/')
+    await axios.post(apiUrl('/api/auth/logout/'))
   } catch {
     // La sesión local debe cerrarse incluso si el servidor no está disponible.
   }

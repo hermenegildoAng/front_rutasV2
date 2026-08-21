@@ -150,6 +150,7 @@ import axios from 'axios'
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { apiUrl } from '../services/api'
 import BuscadorArchivoRuta from './rutas/BuscadorArchivoRuta.vue'
 import ModoArrastreRuta from './rutas/ModoArrastreRuta.vue'
 import PanelPuntosRuta from './rutas/PanelPuntosRuta.vue'
@@ -256,7 +257,7 @@ const form = ref({
 //========================== FUncion edicion de ruta =========================
 const cargarDatosParaEdicion = async (idRuta) => {
   try {
-    const response = await axios.get(`http://localhost:8000/api/maps/rutas-gtfs/${idRuta}/detalle/`) 
+    const response = await axios.get(apiUrl(`/api/maps/rutas-gtfs/${idRuta}/detalle/`))
     const data = response.data.data 
     
     
@@ -654,8 +655,6 @@ const handleGuardarRuta = () => {
     }
   }
 
-  console.log('Payload Estructura GTFS Limpio y Listo:', JSON.stringify(payload, null, 2))
-  
   const guardarRutaGTFS = async (payloadJSON) => {
     try {
 
@@ -664,7 +663,7 @@ const handleGuardarRuta = () => {
       if (esModoEdicion.value) {
         // === MODO EDICIÓN (PUT) ===
         const idRuta = props.rutaPrecargada.id
-        response = await axios.put(`http://localhost:8000/api/maps/rutas-gtfs/${idRuta}/`, payloadJSON, {
+        response = await axios.put(apiUrl(`/api/maps/rutas-gtfs/${idRuta}/`), payloadJSON, {
           headers: {
               'Content-Type': 'application/json',
               // 'Authorization': `Bearer ${token}` // Descomenta si usas JWT
@@ -674,7 +673,7 @@ const handleGuardarRuta = () => {
         toast.success('¡Ruta actualizada exitosamente!')
       } else {
         // === MODO CREACIÓN (POST) ===
-        response = await axios.post('http://localhost:8000/api/maps/rutas-gtfs/', payloadJSON, {
+        response = await axios.post(apiUrl('/api/maps/rutas-gtfs/'), payloadJSON, {
             headers: {
                 'Content-Type': 'application/json',
                 // 'Authorization': `Bearer ${token}` // Descomenta si usas JWT
@@ -689,9 +688,6 @@ const handleGuardarRuta = () => {
        
         toast.success(response.data?.data?.mensaje || '¡Ruta guardada exitosamente en el sistema GTFS!');
         
-        console.log('¡Éxito! Ruta registrada en la base de datos:', response.data);
-        
-    
         emit('rutaGuardada', 'rutas');
         
     } catch (error) {
@@ -699,16 +695,17 @@ const handleGuardarRuta = () => {
         if (error.response) {
             
             console.error('Error de validación en Django:', error.response.data);
-            alert('Django rechazó los datos. Revisa la consola para ver qué campo falló.');
+            toast.error('El servidor rechazó los datos. Revisa los campos e inténtalo nuevamente.');
             
         } else if (error.request) {
           
             console.error('El servidor no responde:', error.request);
-            alert('Error de red. No se pudo contactar al servidor de Django.');
+            toast.error('Error de red. No se pudo contactar al servidor.');
             
         } else {
            
             console.error('Error al armar la petición:', error.message);
+            toast.error('No fue posible preparar la solicitud.');
         }
     }
   }
